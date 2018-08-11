@@ -172,7 +172,8 @@ inc_to_inconc <-
 
 reduction_effect_df <- bind_rows(exc_to_inc, exc_to_inconc, inc_to_inconc) %>%
     select(before, after, marker_set = marker_set.x, n) %>%
-    complete(before, after, marker_set, fill = list(n = 0))
+    complete(before, after, marker_set, fill = list(n = 0)) %>%
+    filter(before != after)
 
 write_tsv(reduction_effect_df, "./reduction_of_loci.tsv")
 
