@@ -36,7 +36,15 @@ Then, we rearranged the trios in different sets of loci, giving the following sa
 | identifiler |  39211|      13352|
 | pp16        |  78459|      24797|
 
-After reducing the original number of loci (up to 22) to 18 or 15, we observe that the paternity status would change in a few cases. Below we show the number of cases which change from the status in column `before` to the status in column `after`.
+After reducing the original number of loci (up to 22) to 18 or 15, we observe that the paternity status change in a few cases. Below we show the number of cases which change from the status in column `before` to the status in column `after`.
+
+We define
+
+-   Exclusion: inconsistency between AF and child at ≥3 loci.
+
+-   Inclusion: Less than 3 inconsistencies and PI ≥ 10,000.
+
+-   Inconclusive: Less than 3 inconsistencies and PI &lt; 10,000.
 
 | before    | after        | marker\_set |    n|
 |:----------|:-------------|:------------|----:|
