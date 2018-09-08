@@ -1,7 +1,7 @@
 The Duo paternity project
 ================
 
-From 128,140 Trios, we calculated the percentage of exclusion per locus:
+### Percentage of exclusion per locus
 
 | marker   |   perc|
 |:---------|------:|
@@ -28,23 +28,17 @@ From 128,140 Trios, we calculated the percentage of exclusion per locus:
 | D5S818   |  16.42|
 | TPOX     |  14.93|
 
-Then, we rearranged the trios in different sets of loci, giving the following sample sizes:
+### Trios sets
 
-| marker\_set |  total|  exclusion|
-|:------------|------:|----------:|
-| codis       |  38320|      13105|
-| identifiler |  39211|      13352|
-| pp16        |  78459|      24797|
+We rearranged the trios in different sets of loci, giving the following sample sizes:
 
-After reducing the original number of loci (up to 22) to 18 or 15, we observe that the paternity status change in a few cases. Below we show the number of cases which change from the status in column `before` to the status in column `after`.
+| marker\_set |   total|  exclusion|
+|:------------|-------:|----------:|
+| codis       |  38,320|     13,105|
+| identifiler |  39,211|     13,352|
+| pp16        |  78,459|     24,797|
 
-We define
-
--   Exclusion: inconsistency between AF and child at ≥3 loci.
-
--   Inclusion: Less than 3 inconsistencies and PI ≥ 10,000.
-
--   Inconclusive: Less than 3 inconsistencies and PI &lt; 10,000.
+After reducing the original number of loci (up to 22) to 18 or 15, the paternity status change in a few cases. Below we see the number of cases which changed from the status in column `before` to the status in column `after`.
 
 | before    | after        | marker\_set |    n|
 |:----------|:-------------|:------------|----:|
@@ -58,4 +52,32 @@ We define
 | inclusion | inconclusive | identifiler |  326|
 | inclusion | inconclusive | pp16        |  344|
 
-Then, we sought to evaluate the rate of false inclusions in Duo cases. We took the Trios rearranged in the Codis, Identifiler and PP16 marker sets, we removed the mother, and recalculated to probability of paternity.
+Definitions:
+
+-   Exclusion: mismatch between AF and child at ≥3 loci.
+
+-   Inclusion: Less than 3 mismatches and PI ≥ 10,000.
+
+-   Inconclusive: Less than 3 mismatches and PI &lt; 10,000.
+
+### False inclusion in Duos
+
+Then, we sought to evaluate the rate of false inclusions in Duo cases. We took the Trios rearranged in the Codis, Identifiler and PP16 marker sets, we removed the mother, and we recalculated to probability of paternity.
+
+Given the mutation models below, we observe the following false inclusions:
+
+#### LR = 0.001 in case of mismatch between AF and child
+
+| marker\_set |  case\_no| trio        |  exclusions|        cpi|
+|:------------|---------:|:------------|-----------:|----------:|
+| codis       |    250992| M1\_F1\_SP1 |           1|  144542.54|
+| identifiler |    253626| M1\_F1\_SP1 |           0|   38484.42|
+| pp16        |    117770| M1\_F1\_SP1 |           1|   10892.31|
+| pp16        |    155180| M1\_F1\_SP1 |           1|   10661.89|
+
+#### Step-wise mutation model, mutation rates from STRbase, mutate range = 0.1, point mutation rate = 0.00001
+
+| marker\_set |  case\_no| trio        |       cpi|
+|:------------|---------:|:------------|---------:|
+| identifiler |    253626| M1\_F1\_SP1 |  38113.29|
+| pp16        |    117770| M1\_F1\_SP1 |  13829.57|

@@ -200,7 +200,7 @@ trios_exclusion_pp16 <- trios_df %>%
     ungroup() %>%
     select(-pi, -pi_adj)
 
-write_tsv(trios_df, "./trios_pis_fam.tsv") 
+write_tsv(trios_df, "./trios_pis.tsv") 
 write_tsv(trios_exclusion_codis, "./trios_exclusion_codis.tsv") 
 write_tsv(trios_exclusion_ident, "./trios_exclusion_ident.tsv") 
 write_tsv(trios_exclusion_pp16, "./trios_exclusion_pp16.tsv") 

@@ -37,27 +37,19 @@ ped2 <- FamiliasPedigree(id = c("child", "AF"),
 
 mypedigrees <- list(isFather = ped1, unrelated = ped2)
 
-freqs <- read_tsv("./allele_frequency.tsv")
+freqs <- read_tsv("../../input_data/allele_frequency.tsv")
 
-mutation_rates <- read_tsv("./strbase_mutation_rates.tsv") %>%
+mutation_rates <- read_tsv("../../input_data/strbase_mutation_rates.tsv") %>%
     arrange(marker)
-
-duos <- read_tsv("./exclusion_trios.tsv") %>% 
-    select(-a1_M, -a2_M, -pi, -cpi)
 
 
 # Identifiler
-identifiler_loci <- sort(readLines("./identifiler_loci.txt"))
+ident_loci <- sort(readLines("../../input_data/identifiler_loci.txt"))
+familias_ident_loci <- map(ident_loci, make_familias_locus, freqs = freqs,
+			   mutation = mutation_rates)
 
-familias_ident_loci <- map(identifiler_loci, make_familias_locus, 
-			   freqs = freqs, mutation = mutation_rates)
-
-duos_identifiler <- duos %>%
-    filter(marker %in% identifiler_loci) %>%
-    group_by(case_no, trio) %>%
-    filter(n() == 15) %>%
-    ungroup() %>%
-    arrange(case_no, trio, marker) %>%
+duos_ident <- read_tsv("../trios/trios_exclusion_ident.tsv") %>%
+    select(case_no, trio, marker, a1_F:a2_SP) %>%
     gather(hap, allele, 4:7) %>%
     separate(hap, c("h", "person"), sep = "_") %>%
     mutate(person = recode(person, "F" = "child", "SP" = "AF"),
@@ -65,24 +57,22 @@ duos_identifiler <- duos %>%
     unite("m", marker:h, sep = "") %>%
     spread(m, allele)
 
-inclusion_duos_identifiler <- duos_identifiler %>%
+duos_ident_pis <- duos_ident %>%
     group_by(case_no, trio) %>%
     do(calc_cpi(., loci = familias_ident_loci, pedigrees = mypedigrees)) %>%
-    filter(cpi >= 10000) %>%
     ungroup()
-   
+
+duos_ident_inc <- duos_ident_pis %>%
+    filter(cpi >= 10000)
+
+
 # PP16
-pp16_loci <- sort(readLines("./pp16_loci.txt"))
+pp16_loci <- sort(readLines("../../input_data/pp16_loci.txt"))
+familias_pp16_loci <- map(pp16_loci, make_familias_locus, freqs = freqs,
+			   mutation = mutation_rates)
 
-familias_pp16_loci <- map(pp16_loci, make_familias_locus, 
-			   freqs = freqs, mutation = mutation_rates)
-
-duos_pp16 <- duos %>%
-    filter(marker %in% pp16_loci) %>%
-    group_by(case_no, trio) %>%
-    filter(n() == 15) %>%
-    ungroup() %>%
-    arrange(case_no, trio, marker) %>%
+duos_pp16 <- read_tsv("../trios/trios_exclusion_pp16.tsv") %>%
+    select(case_no, trio, marker, a1_F:a2_SP) %>%
     gather(hap, allele, 4:7) %>%
     separate(hap, c("h", "person"), sep = "_") %>%
     mutate(person = recode(person, "F" = "child", "SP" = "AF"),
@@ -90,10 +80,16 @@ duos_pp16 <- duos %>%
     unite("m", marker:h, sep = "") %>%
     spread(m, allele)
 
-inclusion_duos_pp16 <- duos_pp16 %>%
+duos_pp16_pis <- duos_pp16 %>%
     group_by(case_no, trio) %>%
     do(calc_cpi(., loci = familias_pp16_loci, pedigrees = mypedigrees)) %>%
-    filter(cpi >= 10000) %>%
     ungroup()
 
+duos_pp16_inc <- duos_pp16_pis %>%
+    filter(cpi >= 10000)
+
+inclusion_df <- bind_rows(identifiler = duos_ident_inc,
+                          pp16 = duos_pp16_inc, .id = "marker_set")
+
+write_tsv(inclusion_df, "./false_inclusions_strbase.tsv")
 

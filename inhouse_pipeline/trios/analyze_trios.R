@@ -15,11 +15,11 @@ calc_pi <- function(marker, a1_M, a2_M, a1_F, a2_F, a1_SP, a2_SP, freqs) {
   shared_mo_ch <- intersect(mo, ch)
 
   if (!ch_hom && length(shared_mo_ch)==1 && all(shared_mo_ch == shared_af_ch)) {
-      return(0.001)
+      return(0)
   }
 
   if (length(shared_af_ch) == 0) {
-      return(0.001)
+      return(0)
   }
 
   if (af_hom && ch_hom && all(af==ch) && all(af %in% mo)) {
@@ -66,13 +66,47 @@ calc_pi <- function(marker, a1_M, a2_M, a1_F, a2_F, a1_SP, a2_SP, freqs) {
   }
 }
  
-trios <- read_tsv("../input_data/integrated_data.tsv")
+trios <- read_tsv("../../input_data/integrated_data.tsv")
 names(trios) <- sub("allele\\.", "a", names(trios))
 
-freqs <- read_tsv("../input_data/allele_frequency.tsv")
+freqs <- read_tsv("../../input_data/allele_frequency.tsv")
 
 trios$pi <- trios %>% 
     select(-case_no, -trio) %>% 
     pmap_dbl(calc_pi, freqs = freqs)
 
+trios <- mutate(trios, adj_pi = ifelse(pi == 0, 0.001, pi))
+
+
+codis_loci <- sort(readLines("../../input_data/codis_loci.txt"))
+
+trios_exclusion_codis <- trios %>%
+    filter(marker %in% codis_loci) %>%
+    group_by(case_no, trio) %>%
+    filter(n() == 18, sum(pi == 0) > 2) %>% 
+    ungroup() %>%
+    select(-pi, -adj_pi)
+
+ident_loci <- sort(readLines("../../input_data/identifiler_loci.txt"))
+
+trios_exclusion_ident <- trios %>%
+    filter(marker %in% ident_loci) %>%
+    group_by(case_no, trio) %>%
+    filter(n() == 15, sum(pi == 0) > 2) %>% 
+    ungroup() %>%
+    select(-pi, -adj_pi)
+
+pp16_loci <- sort(readLines("../../input_data/pp16_loci.txt"))
+
+trios_exclusion_pp16 <- trios %>%
+    filter(marker %in% pp16_loci) %>%
+    group_by(case_no, trio) %>%
+    filter(n() == 15, sum(pi == 0) > 2) %>% 
+    ungroup() %>%
+    select(-pi, -adj_pi)
+
+write_tsv(trios, "./trios_pi.tsv")
+write_tsv(trios_exclusion_codis, "./trios_exclusion_codis.tsv")
+write_tsv(trios_exclusion_ident, "./trios_exclusion_ident.tsv")
+write_tsv(trios_exclusion_pp16, "./trios_exclusion_pp16.tsv")
 
