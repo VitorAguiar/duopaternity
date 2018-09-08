@@ -1,0 +1,16 @@
+To discuss with authors:
+
+1. If procedure to calculate allele frequencies is reasonable.
+
+Especially cases of alleles present in the parents, and not in the children
+
+* Alternative:
+Exclude haplotype in the child from the parents, use all "independent" haplotypes and divide by
+4N
+
+2. Mutation rates in Step-wise model, including mutation range and point mutation rate.
+2.1 Mutation rates for markers not available from STRbase, as asked by one of the reviewers.
+
+3. If simulation in the original submission adds anything relevant to the discussions.
+
+Maybe relevant to show the rate of false inclusion in a large databse of truly unrelated AF-child pairs, and compare it with what we observe in the real data.
