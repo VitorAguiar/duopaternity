@@ -1,7 +1,10 @@
 To discuss with authors:
 
-1. If procedure to calculate allele frequencies is reasonable.
+1. If assignment of LR=0.01 to inconsistencies is still done by Brazlian labs,
+and if we should still put emphasis on it. Is there any citations for this
+procedure?
 
+2. If procedure to calculate allele frequencies is reasonable.
 Especially the solution for alleles present in the parents, but not in the
 children.
 
@@ -9,13 +12,13 @@ children.
 To exclude child's haplotypes from the parents, use all "independent" haplotypes
 and divide by 4N.
 
-2. Mutation rates in Step-wise model, including mutation range and point
+3. Mutation rates in Step-wise model, including mutation range and point
 mutation rate. I'm currently using range = 0.1, and point mutation rate =
 0.00001.
 
-3. Mutation rates for markers not available from STRbase, as asked by one of
+4. Mutation rates for markers not available from STRbase, as asked by one of
 the reviewers.
 
-4. To discuss the relevance of simulation.
+5. To discuss the relevance of simulation.
 Maybe relevant to show the rate of false inclusion in a large database of truly
 unrelated AF-child pairs, and compare it with what we observe in the real data.
