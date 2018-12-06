@@ -18,7 +18,3 @@ mutation rate. I'm currently using range = 0.1, and point mutation rate =
 
 4. Mutation rates for markers not available from STRbase, as asked by one of
 the reviewers.
-
-5. To discuss the relevance of simulation.
-Maybe relevant to show the rate of false inclusion in a large database of truly
-unrelated AF-child pairs, and compare it with what we observe in the real data.
