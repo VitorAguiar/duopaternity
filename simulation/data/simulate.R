@@ -1,27 +1,29 @@
 library(tidyverse)
 
-freqs <- read_tsv("../input_data/allele_frequency.tsv")
+freqs <- read_tsv("../../input_data/allele_frequency.tsv")
 
-simul_expr <- expression(freqs %>% 
-    group_by(marker) %>% 
-    sample_n(size = 2, replace = TRUE, weight = f) %>% 
-    ungroup() %>%
-    select(-f))
+n_cases <- 1e6
 
 set.seed(1)
-simul_af <- replicate(1e6, eval(simul_expr), simplify = FALSE) %>%
-    bind_rows(.id = "case_no")
-  
-simul_ch <- replicate(1e6, eval(simul_expr), simplify = FALSE) %>%
-    bind_rows(.id = "case_no")
 
-simul_df <- list(af = simul_af, ch = simul_ch) %>%
-    bind_rows(.id = "subject") %>%
-    arrange(case_no, marker, subject, allele) %>%
-    group_by(case_no, subject, marker) %>%
-    mutate(h = 1:2) %>%
-    ungroup() %>%
-    unite(id, c("subject", "h"), sep = "_") %>%
-    spread(id, allele)
+for (i in 1:25) {
 
-write_tsv(simul_df, "./simulated_duos.tsv")
+    case_no_end <- i * n_cases
+    case_no_start <- case_no_end - n_cases + 1
+
+    out <- paste0("./simul_chunk", i, ".tsv") 
+    
+    freqs %>% 
+	group_by(marker) %>% 
+	sample_n(size = n_cases * 4, replace = TRUE, weight = f) %>%
+	mutate(case_no = rep(case_no_start:case_no_end, each = 4)) %>%
+	ungroup() %>%
+	mutate(ind = rep(c("af", "af", "ch", "ch"), n()/4)) %>%
+	select(-f) %>%
+	arrange(case_no, ind, marker, allele) %>%
+	mutate(h = rep(1:2, n()/2L)) %>%
+	select(case_no, marker, ind, h, allele) %>% 
+	unite(id, c("ind", "h"), sep = "_") %>%
+	spread(id, allele) %>%
+	write_tsv(out)
+}
