@@ -38,7 +38,7 @@ profiles_noDups <- profiles %>%
 allele_counts <- profiles_noDups %>%
     select(marker, allele) %>% 
     add_count(marker) %>%
-    add_count(marker, allele) %>%
+    add_count(marker, allele, name = "nn") %>%
     distinct()
 
 mafs <- allele_counts %>%

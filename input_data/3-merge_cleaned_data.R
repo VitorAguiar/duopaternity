@@ -17,10 +17,8 @@ final_df <- bind_rows(mega_clean, abi_sub) %>%
   arrange(case_no, trio, marker)
 
 mother_exclusions <- final_df %>%
-  filter(allele.1_M != allele.1_F & 
-	 allele.1_M != allele.2_F &
-	 allele.2_M != allele.1_F &
-	 allele.2_M != allele.2_F) %>%
+  filter(m_1 != ch_1 & m_1 != ch_2 &
+	 m_2 != ch_1 & m_2 != ch_2) %>%
   distinct(case_no, trio)
 
 final_clean <- anti_join(final_df, mother_exclusions)

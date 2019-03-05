@@ -34,12 +34,10 @@ data_genos <- data_mega %>%
 	   a.1_SP != "", a.2_SP != "") %>% 
     mutate_at(vars(a.1_M:a.2_SP), as.numeric) %>%
     drop_na() %>%
-    mutate(allele.1_M = pmin(a.1_M, a.2_M), allele.2_M = pmax(a.1_M, a.2_M),
-	 allele.1_F = pmin(a.1_F, a.2_F), allele.2_F = pmax(a.1_F, a.2_F),
-	 allele.1_SP = pmin(a.1_SP, a.2_SP), 
-	 allele.2_SP = pmax(a.1_SP, a.2_SP)) %>%
-    select(case_no, trio, marker, allele.1_M, allele.2_M, 
-	 allele.1_F, allele.2_F, allele.1_SP, allele.2_SP) %>%
+    mutate(m_1 = pmin(a.1_M, a.2_M), m_2 = pmax(a.1_M, a.2_M),
+	   ch_1= pmin(a.1_F, a.2_F), ch_2 = pmax(a.1_F, a.2_F),
+	   af_1 = pmin(a.1_SP, a.2_SP), af_2 = pmax(a.1_SP, a.2_SP)) %>%
+    select(case_no, trio, marker, m_1, m_2, ch_1, ch_2, af_1, af_2) %>%
     distinct()
 
 data_genos_uniq <- data_genos %>% 
@@ -49,17 +47,14 @@ data_genos_uniq <- data_genos %>%
     ungroup() %>%
     select(-n) %>%
     gather(info, allele, -case_no, -trio, -marker) %>%
-    extract(info, c("dummy", "h", "subject_id"), "(allele).(\\d)_(.+)") %>%
     group_by(case_no, trio) %>%
     filter(!all(allele %in% c(0, 7, 8, 9, 99))) %>%
     group_by(case_no, trio, marker) %>%
     filter(!any(allele > 99)) %>%
     ungroup() %>%
-    unite(tmp, c("dummy", "h"), sep = ".") %>%
-    unite(info, c("tmp", subject_id), sep = "_") %>%
     spread(info, allele) %>%
     add_count(case_no, trio) %>%
     filter(n >= 15L) %>%
-    select(case_no, trio, marker, ends_with("_M"), ends_with("_F"), ends_with("_SP"))
+    select(case_no, trio, marker, m_1, m_2, ch_1, ch_2, af_1, af_2)
 
 write_tsv(data_genos_uniq, "./megabace_filtered.tsv")

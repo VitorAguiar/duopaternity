@@ -47,18 +47,17 @@ kits_parents <- kits_merge %>%
   filter(subject_id %in% c("M1", "SP1")) %>%
   unite(genot, c("allele_1", "allele_2"), sep = "_") %>%
   spread(subject_id, genot) %>%
-  separate(M1, c("allele.1_M", "allele.2_M"), sep = "_") %>%
-  separate(SP1, c("allele.1_SP", "allele.2_SP"), sep = "_")
+  separate(M1, c("m_1", "m_2"), sep = "_") %>%
+  separate(SP1, c("af_1", "af_2"), sep = "_")
 
 kits_children <- kits_merge %>%
   filter(grepl("F\\d", subject_id)) %>%
   mutate(trio = paste0("M1_", subject_id, "_SP1")) %>%
-  rename(allele.1_F = allele_1, allele.2_F = allele_2)
+  rename(ch_1 = allele_1, ch_2 = allele_2)
 
 kits_out <- 
   left_join(kits_parents, kits_children, by = c("case_no", "marker")) %>%
-  select(case_no, trio, marker, allele.1_M, allele.2_M, 
-	 allele.1_F, allele.2_F, allele.1_SP, allele.2_SP) %>%
+  select(case_no, trio, marker, m_1, m_2, ch_1, ch_2, af_1, af_2) %>%
   drop_na() %>%
   add_count(case_no, trio) %>%
   filter(n >= 15L) %>%

@@ -5,9 +5,9 @@ integrated_data <- read_tsv("./integrated_data.tsv")
 
 profiles_df <- integrated_data %>%
     distinct(case_no, marker, .keep_all = TRUE) %>%
-    select(-trio, -allele.1_F, -allele.2_F) %>%
-    gather(id, allele, allele.1_M:allele.2_SP) %>%
-    extract(id, c("h", "subject_id"), "allele\\.(1|2)_(.+)") %>%
+    select(-trio, -ch_1, -ch_2) %>%
+    gather(id, allele, m_1:af_2) %>%
+    separate(id, c("subject_id", "h"), sep = "_") %>%
     unite(locus_id, c("marker", "h"), sep = ".") %>%
     unite(id, c("case_no", "subject_id"), sep = ".") %>%
     spread(locus_id, allele)
