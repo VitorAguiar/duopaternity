@@ -12,6 +12,15 @@ make_familias_locus <- function(locus, freqs, mutation) {
 		  MutationRange = 0.1)
 }
 
+format_data <- function(duos_data) {
+
+    duos_data %>%
+	gather(hap, allele, 3:6) %>%
+	separate(hap, c("person", "h"), sep = "_") %>%
+	mutate(person = recode(person, "ch" = "child", "af" = "AF")) %>%
+	unite("m", c("marker", "h"), sep = ".") %>%
+	spread(m, allele)
+}
 
 calc_pi <- function(df_profiles, loci, pedigrees) {
     
@@ -28,6 +37,16 @@ calc_pi <- function(df_profiles, loci, pedigrees) {
         select(marker, pi = isFather)
     
     pi_df
+}
+
+apply_calc_pi <- function(duos_data, familias_loci, familias_pedigrees) {
+
+    duos_data %>%
+	group_by(case_no) %>%
+	do(calc_pi(., loci = familias_loci, pedigrees = familias_pedigrees)) %>%
+	ungroup() %>%
+	mutate(adj_pi = ifelse(pi == 0, 0.001, pi))
+
 }
 
 ped1 <- FamiliasPedigree(id = c("child", "AF"), 
@@ -47,26 +66,21 @@ freqs <- read_tsv("../input_data/allele_frequency.tsv")
 mutation_rates <- read_tsv("../input_data/strbase_mutation_rates.tsv") %>%
     arrange(marker)
 
-
-kit <- commandArgs(TRUE)[1] #identifiler or pp16
-
-loci <- sort(readLines(paste0("../input_data/", kit, "_loci.txt")))
-
+loci <- readLines("../input_data/loci.txt")
+loci <- sort(loci[loci %in% mutation_rates$marker])
 familias_loci <- 
     map(loci, make_familias_locus, freqs = freqs, mutation = mutation_rates)
 
-duos <- read_tsv("./data/simulated_duos.tsv") %>%
-    filter(marker %in% loci) %>%
-    gather(hap, allele, 3:6) %>%
-    separate(hap, c("person", "h"), sep = "_") %>%
-    mutate(person = recode(person, "ch" = "child", "af" = "AF")) %>%
-    unite("m", c("marker", "h"), sep = ".") %>%
-    spread(m, allele)
+for (i in 1:25) {
 
-duos_pis <- duos %>%
-    group_by(case_no) %>%
-    do(calc_pi(., loci = familias_loci, pedigrees = mypedigrees)) %>%
-    ungroup() %>%
-    mutate(adj_pi = ifelse(pi == 0, 0.001, pi))
+    data_in <- paste0("./data/simul_chunk", i, ".tsv")
+    data_out <- paste0("./results/pi_strbase_chunk", i, ".tsv")
 
-write_tsv(duos_pis, paste0("./results/duos_", kit, "_pis_strbase.tsv"))
+    pi_df <- read_tsv(read_in) %>%
+	filter(marker %in% loci) %>%
+	format_data() %>%
+	apply_calc_pi(familias_loci, mypedigrees)
+
+    write_tsv(pi_df, data_out)
+}
+
