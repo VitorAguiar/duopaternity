@@ -71,16 +71,16 @@ loci <- sort(loci[loci %in% mutation_rates$marker])
 familias_loci <- 
     map(loci, make_familias_locus, freqs = freqs, mutation = mutation_rates)
 
-for (i in 1:25) {
 
-    data_in <- paste0("./data/simul_chunk", i, ".tsv")
-    data_out <- paste0("./results/pi_strbase_chunk", i, ".tsv")
+CHUNK <- commandArgs(TRUE)[1]
 
-    pi_df <- read_tsv(read_in) %>%
-	filter(marker %in% loci) %>%
-	format_data() %>%
-	apply_calc_pi(familias_loci, mypedigrees)
+data_in <- paste0("./data/simul_chunk", CHUNK, ".tsv")
+data_out <- paste0("./results/pi_strbase_chunk", CHUNK, ".tsv")
 
-    write_tsv(pi_df, data_out)
-}
+pi_df <- read_tsv(data_in) %>%
+    filter(marker %in% loci) %>%
+    format_data() %>%
+    apply_calc_pi(familias_loci, mypedigrees)
+
+write_tsv(pi_df, data_out)
 

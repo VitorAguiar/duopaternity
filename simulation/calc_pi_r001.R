@@ -64,15 +64,15 @@ freqs <- read_tsv("../input_data/allele_frequency.tsv")
 loci <- sort(readLines("../input_data/loci.txt"))
 familias_loci <- map(loci, make_familias_locus, freqs = freqs)
 
-for (i in 1:25) {
-    
-    data_in <- paste0("./data/simul_chunk", i, ".tsv")
-    data_out <- paste0("./results/pi_r001_chunk", i, ".tsv") 
 
-    pi_df <- read_tsv(data_in) %>%
-	format_data() %>%
-	apply_calc_pi(familias_loci, mypedigrees)
+CHUNK <- commandArgs(TRUE)[1]
 
-    write_tsv(pi_df, data_out)
-}
+data_in <- paste0("./data/simul_chunk", CHUNK, ".tsv")
+data_out <- paste0("./results/pi_r001_chunk", CHUNK, ".tsv") 
+
+pi_df <- read_tsv(data_in) %>%
+    format_data() %>%
+    apply_calc_pi(familias_loci, mypedigrees)
+
+write_tsv(pi_df, data_out)
 
