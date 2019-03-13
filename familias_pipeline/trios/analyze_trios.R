@@ -11,6 +11,16 @@ make_familias_locus <- function(locus, freqs) {
 		  MutationRate = 0)
 }
 
+format_data <- function(dat) {
+
+    dat %>%
+	gather(hap, allele, 4:9) %>%
+	separate(hap, c("person", "h"), sep = "_") %>%
+	mutate(person = recode(person, "m" = "mother", "ch" = "child", "af" = "AF")) %>%
+	unite("m", c("marker", "h"), sep = ".") %>%
+	spread(m, allele)
+}
+
 calc_cpi <- function(df_profiles, loci, pedigrees) {
     
     datamatrix <- df_profiles %>%
@@ -41,92 +51,71 @@ ped2 <- FamiliasPedigree(id = c("mother", "child", "AF"),
 
 mypedigrees <- list(isFather = ped1, unrelated = ped2)
 
-freqs <- read_tsv("../input_data/allele_frequency.tsv")
+freqs <- read_tsv("../../input_data/allele_frequency.tsv")
 
-loci <- sort(readLines("../input_data/loci.txt"))
-familias_loci <- map(loci, make_familias_locus, freqs = freqs)
+all_loci <- sort(readLines("../../input_data/loci.txt"))
+familias_all_loci <- map(all_loci, make_familias_locus, freqs = freqs)
 
-trios <- read_tsv("../input_data/integrated_data.tsv") %>%
-    setNames(sub("allele\\.", "a", names(.))) 
+codis_loci <- readLines("../../input_data/codis_loci.txt")
+ident_loci <- readLines("../../input_data/identifiler_loci.txt")
+pp16_loci <- readLines("../../input_data/pp16_loci.txt")
 
-trios_w <- trios %>%
-    gather(hap, allele, 4:9) %>%
-    separate(hap, c("h", "person"), sep = "_") %>%
-    mutate(person = recode(person, "M" = "mother", "F" = "child", "SP" = "AF"),
-	   h = sub("^a", ".", h)) %>%
-    unite("m", marker:h, sep = "") %>%
-    spread(m, allele)
+trios <- read_tsv("../../input_data/integrated_data.tsv")
 
-trios_pi <- trios_w %>%
+trios_pi <- trios %>%
+    format_data() %>%
     group_by(case_no, trio) %>%
     do(calc_cpi(., loci = familias_loci, pedigrees = mypedigrees)) %>%
     ungroup() %>%
     mutate(pi_adj = ifelse(pi == 0, 0.001, pi))
 
-trios_df <- left_join(trios, trios_pi, by = c("case_no", "trio", "marker")) 
+trios_df <- left_join(trios, trios_pi, by = c("case_no", "trio", "marker")) %>%
+    mutate(exclusion = as.integer(ch_1 != af_1 & ch_1 != af_2 & ch_2 != af_1 & ch_2 != af_2))
 
-trios_cpi <- trios_df %>%
+trios_cpi_original <- trios_df %>%
     group_by(case_no, trio) %>%
     summarise(n_loci = n(), 
-	      n_exclusions = sum(pi == 0),
+	      n_exclusions = sum(exclusion),
 	      cpi = prod(pi_adj)) %>%
-    ungroup() %>%
-    mutate(marker_set = "original")
+    ungroup() 
 
-
-perc_exclusion_per_locus <- trios_df %>%
-    group_by(marker) %>%
-    summarise(n = n(),
-	      ne = sum(pi == 0)) %>%
-    ungroup() %>%
-    mutate(perc = ne/n * 100) %>%
-    select(marker, perc) %>%
-    arrange(desc(perc))
-
-write_tsv(perc_exclusion_per_locus, "./perc_exclusions_per_locus.tsv")
-
-codis_loci <- readLines("../input_data/codis_loci.txt")
-
-trios_codis_cpi <- trios_df %>%
+trios_cpi_codis <- trios_df %>%
     filter(marker %in% codis_loci) %>%
     group_by(case_no, trio) %>%
     filter(n() == 18) %>%
     summarise(n_loci = n(), 
-	      n_exclusions = sum(pi == 0),
+	      n_exclusions = sum(exclusion),
 	      cpi = prod(pi_adj)) %>%
-    ungroup() %>%
-    mutate(marker_set = "codis")
+    ungroup()
 
-ident_loci <- readLines("../input_data/identifiler_loci.txt")
-
-trios_ident_cpi <- trios_df %>%
+trios_cpi_ident <- trios_df %>%
     filter(marker %in% ident_loci) %>%
     group_by(case_no, trio) %>%
     filter(n() == 15) %>%
     summarise(n_loci = n(), 
-	      n_exclusions = sum(pi == 0),
+	      n_exclusions = sum(exclusion),
 	      cpi = prod(pi_adj)) %>%
-    ungroup() %>%
-    mutate(marker_set = "identifiler") 
+    ungroup() 
 
-pp16_loci <- readLines("../input_data/pp16_loci.txt")
-
-trios_pp16_cpi <- trios_df %>%
+trios_cpi_pp16 <- trios_df %>%
     filter(marker %in% pp16_loci) %>%
     group_by(case_no, trio) %>%
     filter(n() == 15) %>%
     summarise(n_loci = n(), 
-	      n_exclusions = sum(pi == 0),
+	      n_exclusions = sum(exclusion),
 	      cpi = prod(pi_adj)) %>%
-    ungroup() %>%
-    mutate(marker_set = "pp16")
+    ungroup()
 
 trios_sets <- 
-    bind_rows(trios_codis_cpi, trios_ident_cpi, trios_pp16_cpi) %>%
+    list(original = trios_cpi_original,
+	 codis = trios_cpi_codis,
+	 identifiler = trios_cpi_ident,
+	 pp16 = trios_cpi_pp16) %>%
+    bind_rows(.id = "marker_set") %>%
     arrange(case_no, trio, desc(n_loci), marker_set)
 
 trios_exclusions <- trios_sets %>%
-    filter(n_exclusions > 2)
+    filter(n_exclusions >= 3)
 
 trios_inconclusive <- trios_sets %>%
     filter(n_exclusions < 3, cpi < 10000)
@@ -139,66 +128,78 @@ trios_inclusions <- trios_sets %>%
 total_trios <- 
     left_join(trios_sets %>% count(marker_set),
 	      trios_exclusions %>% count(marker_set), by = c("marker_set")) %>%
-    rename(total = n.x, exclusion = n.y)
+    rename(total = n.x, exclusion = n.y) %>%
+    mutate(marker_set = factor(marker_set, levels = c("original", "codis", "identifiler", "pp16"))) %>%
+    arrange(marker_set)
 
 write_tsv(total_trios, "./total_trios.tsv")
 
 
 # inclusion to exclusion
-left_join(trios_exclusions, trios_cpi, by = c("case_no", "trio")) %>%
-    filter(n_exclusions.y < 3, cpi.y >= 10000) %>%
-    count(marker_set.x)
+inc_to_exc <- 
+    left_join(trios_exclusions, trios_cpi, by = c("case_no", "trio")) %>%
+    group_by(marker_set) %>%
+    summarise(n = sum(n_exclusions.y < 3 & cpi.y >= 10000)) %>%
+    mutate(before = "inclusion", after = "exclusion")
 
 # exclusion to inclusion
 exc_to_inc <- 
     left_join(trios_inclusions, trios_cpi, by = c("case_no", "trio")) %>%
-    filter(n_exclusions.y > 2) %>%
-    count(marker_set.x) %>%
+    group_by(marker_set) %>%
+    summarise(n = sum(n_exclusions.y >= 3)) %>%
     mutate(before = "exclusion", after = "inclusion")
 
 # exclusion to inconclusive
 exc_to_inconc <- 
     left_join(trios_inconclusive, trios_cpi, by = c("case_no", "trio")) %>%
-    filter(n_exclusions.y > 2) %>%
-    count(marker_set.x) %>%
+    group_by(marker_set) %>%
+    summarise(n = sum(n_exclusions.y >= 3)) %>%
     mutate(before = "exclusion", after = "inconclusive")
 
 # inclusion to inconclusive
 inc_to_inconc <- 
     left_join(trios_inconclusive, trios_cpi, by = c("case_no", "trio")) %>%
-    filter(n_exclusions.y < 3, cpi.y >= 10000) %>%
-    count(marker_set.x) %>%
+    group_by(marker_set) %>%
+    summarise(n = sum(n_exclusions.y < 3 & cpi.y >= 10000)) %>%
     mutate(before = "inclusion", after = "inconclusive")
 
-reduction_effect_df <- bind_rows(exc_to_inc, exc_to_inconc, inc_to_inconc) %>%
-    select(before, after, marker_set = marker_set.x, n) %>%
-    complete(before, after, marker_set, fill = list(n = 0)) %>%
-    filter(before != after)
+reduction_effect_df <- 
+    bind_rows(inc_to_exc, exc_to_inc, exc_to_inconc, inc_to_inconc) %>%
+    select(before, after, marker_set = marker_set, n) %>%
+    mutate(marker_set = factor(marker_set, levels = c("original", "codis", "identifiler", "pp16"))) %>%
+    arrange(before, after, marker_set)
 
 write_tsv(reduction_effect_df, "./reduction_of_loci.tsv")
 
 
 # separate sets
+
+trios_exclusion_original <- trios_df %>%
+    group_by(case_no, trio) %>%
+    filter(sum(exclusion) >= 3) %>%
+    ungroup() %>%
+    select(-pi, -pi_adj, -exclusion)
+
 trios_exclusion_codis <- trios_df %>%
     filter(marker %in% codis_loci) %>%
     group_by(case_no, trio) %>%
-    filter(n() == 18, sum(pi == 0) > 2) %>%
+    filter(n() == 18, sum(exclusion) >= 3) %>%
     ungroup() %>%
-    select(-pi, -pi_adj)
+    select(-pi, -pi_adj, -exclusion)
 
 trios_exclusion_ident <- trios_df %>%
     filter(marker %in% ident_loci) %>%
     group_by(case_no, trio) %>%
-    filter(n() == 15, sum(pi == 0) > 2) %>%
+    filter(n() == 15, sum(exclusion) >= 3) %>%
     ungroup() %>%
-    select(-pi, -pi_adj)
+    select(-pi, -pi_adj, -exclusion)
 
 trios_exclusion_pp16 <- trios_df %>%
     filter(marker %in% pp16_loci) %>%
     group_by(case_no, trio) %>%
-    filter(n() == 15, sum(pi == 0) > 2) %>%
+    filter(n() == 15, sum(exclusion) >= 3) %>%
     ungroup() %>%
-    select(-pi, -pi_adj)
+    select(-pi, -pi_adj, -exclusion)
 
 write_tsv(trios_df, "./trios_pis.tsv") 
 write_tsv(trios_exclusion_codis, "./trios_exclusion_codis.tsv") 
