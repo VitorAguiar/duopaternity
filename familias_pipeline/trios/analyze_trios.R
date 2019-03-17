@@ -65,12 +65,14 @@ trios <- read_tsv("../../input_data/integrated_data.tsv")
 trios_pi <- trios %>%
     format_data() %>%
     group_by(case_no, trio) %>%
-    do(calc_cpi(., loci = familias_loci, pedigrees = mypedigrees)) %>%
-    ungroup() %>%
-    mutate(pi_adj = ifelse(pi == 0, 0.001, pi))
+    do(calc_cpi(., loci = familias_all_loci, pedigrees = mypedigrees)) %>%
+    ungroup()
 
 trios_df <- left_join(trios, trios_pi, by = c("case_no", "trio", "marker")) %>%
-    mutate(exclusion = as.integer(ch_1 != af_1 & ch_1 != af_2 & ch_2 != af_1 & ch_2 != af_2))
+    mutate(pi_adj = ifelse(pi == 0, 0.001, pi),
+	   exclusion = as.integer(pi == 0))
+
+write_tsv(trios_df, "./trios_pis.tsv") 
 
 trios_cpi_original <- trios_df %>%
     group_by(case_no, trio) %>%
@@ -137,34 +139,35 @@ write_tsv(total_trios, "./total_trios.tsv")
 
 # inclusion to exclusion
 inc_to_exc <- 
-    left_join(trios_exclusions, trios_cpi, by = c("case_no", "trio")) %>%
+    left_join(trios_exclusions, trios_cpi_original, by = c("case_no", "trio")) %>%
     group_by(marker_set) %>%
     summarise(n = sum(n_exclusions.y < 3 & cpi.y >= 10000)) %>%
     mutate(before = "inclusion", after = "exclusion")
 
 # exclusion to inclusion
 exc_to_inc <- 
-    left_join(trios_inclusions, trios_cpi, by = c("case_no", "trio")) %>%
+    left_join(trios_inclusions, trios_cpi_original, by = c("case_no", "trio")) %>%
     group_by(marker_set) %>%
     summarise(n = sum(n_exclusions.y >= 3)) %>%
     mutate(before = "exclusion", after = "inclusion")
 
 # exclusion to inconclusive
 exc_to_inconc <- 
-    left_join(trios_inconclusive, trios_cpi, by = c("case_no", "trio")) %>%
+    left_join(trios_inconclusive, trios_cpi_original, by = c("case_no", "trio")) %>%
     group_by(marker_set) %>%
     summarise(n = sum(n_exclusions.y >= 3)) %>%
     mutate(before = "exclusion", after = "inconclusive")
 
 # inclusion to inconclusive
 inc_to_inconc <- 
-    left_join(trios_inconclusive, trios_cpi, by = c("case_no", "trio")) %>%
+    left_join(trios_inconclusive, trios_cpi_original, by = c("case_no", "trio")) %>%
     group_by(marker_set) %>%
     summarise(n = sum(n_exclusions.y < 3 & cpi.y >= 10000)) %>%
     mutate(before = "inclusion", after = "inconclusive")
 
 reduction_effect_df <- 
     bind_rows(inc_to_exc, exc_to_inc, exc_to_inconc, inc_to_inconc) %>%
+    filter(marker_set != "original") %>%
     select(before, after, marker_set = marker_set, n) %>%
     mutate(marker_set = factor(marker_set, levels = c("original", "codis", "identifiler", "pp16"))) %>%
     arrange(before, after, marker_set)
@@ -178,14 +181,14 @@ trios_exclusion_original <- trios_df %>%
     group_by(case_no, trio) %>%
     filter(sum(exclusion) >= 3) %>%
     ungroup() %>%
-    select(-pi, -pi_adj)
+    select(-pi, -pi_adj, -exclusion)
 
 trios_exclusion_codis <- trios_df %>%
     filter(marker %in% codis_loci) %>%
     group_by(case_no, trio) %>%
     filter(n() == 18, sum(exclusion) >= 3) %>%
     ungroup() %>%
-    select(-pi, -pi_adj)
+    select(-pi, -pi_adj, -exclusion)
 
 trios_exclusion_ident <- trios_df %>%
     filter(marker %in% ident_loci) %>%
@@ -201,7 +204,7 @@ trios_exclusion_pp16 <- trios_df %>%
     ungroup() %>%
     select(-pi, -pi_adj)
 
-write_tsv(trios_df, "./trios_pis.tsv") 
+write_tsv(trios_exclusion_original, "./trios_exclusion_original.tsv") 
 write_tsv(trios_exclusion_codis, "./trios_exclusion_codis.tsv") 
 write_tsv(trios_exclusion_ident, "./trios_exclusion_ident.tsv") 
 write_tsv(trios_exclusion_pp16, "./trios_exclusion_pp16.tsv") 
