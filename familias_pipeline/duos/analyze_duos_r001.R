@@ -71,7 +71,7 @@ duos_codis_cpi <- duos_codis %>%
 	      n_exclusions = sum(exclusion)) %>%
     ungroup() 
 
-write_tsv(duos_codis_cpi, "duos_codis_cpi.tsv")
+write_tsv(duos_codis_cpi, "duos_codis_cpi_r001.tsv")
 
 duos_codis_inc <- duos_codis_cpi %>%
     filter(n_exclusions < 3 & cpi >= 10000)
@@ -95,7 +95,7 @@ duos_ident_cpi <- duos_ident %>%
 	      n_exclusions = sum(exclusion)) %>%
     ungroup()
 
-write_tsv(duos_ident_cpi, "duos_ident_cpi.tsv")
+write_tsv(duos_ident_cpi, "duos_ident_cpi_r001.tsv")
 
 duos_ident_inc <- duos_ident_cpi %>%
     filter(n_exclusions < 3 & cpi >= 10000)
@@ -119,7 +119,7 @@ duos_pp16_cpi <- duos_pp16 %>%
 	      n_exclusions = sum(exclusion)) %>%
     ungroup() 
 
-write_tsv(duos_pp16_cpi, "duos_pp16_cpi.tsv")
+write_tsv(duos_pp16_cpi, "duos_pp16_cpi_r001.tsv")
 
 duos_pp16_inc <- duos_pp16_cpi %>%
     filter(n_exclusions < 3 & cpi >= 10000)
