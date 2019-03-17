@@ -79,14 +79,8 @@ data_out <- paste0("./results/pi_strbase_chunk", CHUNK, ".tsv")
 
 prof_df <- read_tsv(data_in) 
 
-exc_df <- prof_df %>%
-    mutate(exclusion = as.integer(ch_1 != af_1 & ch_2 != af_2 & ch_1 != af_2 & ch_2 != af_1)) %>%
-    select(case_no, marker, exclusion)
-
 pi_df <- prof_df %>%
     format_data() %>%
     apply_calc_pi(familias_loci, mypedigrees)
 
-out_df <- left_join(pi_df, exc_df, by = c("case_no", "marker"))
-
-write_tsv(out_df, data_out)
+write_tsv(pi_df, data_out)
