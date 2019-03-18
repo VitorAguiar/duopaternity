@@ -28,7 +28,7 @@ calc_pi <- function(df_profiles, loci, pedigrees) {
         select(-case_no) %>%
         as.data.frame() %>%
         column_to_rownames("person")
-    
+   
     result <- FamiliasPosterior(pedigrees, loci, datamatrix, ref = 2)
     
     pi_df <- result$LRperMarker[, "isFather", drop = FALSE] %>%
@@ -44,8 +44,7 @@ apply_calc_pi <- function(duos_data, familias_loci, familias_pedigrees) {
     duos_data %>%
 	group_by(case_no) %>%
 	do(calc_pi(., loci = familias_loci, pedigrees = familias_pedigrees)) %>%
-	ungroup() %>%
-	mutate(adj_pi = ifelse(pi == 0, 0.001, pi))
+	ungroup()
 
 }
 
@@ -71,16 +70,24 @@ loci <- sort(loci[loci %in% mutation_rates$marker])
 familias_loci <- 
     map(loci, make_familias_locus, freqs = freqs, mutation = mutation_rates)
 
-
 CHUNK <- commandArgs(TRUE)[1]
 
 data_in <- paste0("./data/simul_chunk", CHUNK, ".tsv")
 data_out <- paste0("./results/pi_strbase_chunk", CHUNK, ".tsv")
 
-prof_df <- read_tsv(data_in) 
+prof_df <- read_tsv(data_in) %>% 
+    filter(marker %in% loci) %>%
+    arrange(case_no, loci) 
+
+exc_df <- prof_df %>%
+    mutate(exclusion = as.integer(ch_1 != af_1 & ch_2 != af_2 & ch_1 != af_2 & ch_2 != af_1)) %>%
+    select(case_no, marker, exclusion)
 
 pi_df <- prof_df %>%
     format_data() %>%
     apply_calc_pi(familias_loci, mypedigrees)
 
-write_tsv(pi_df, data_out)
+out_df <- left_join(pi_df, exc_df, by = c("case_no", "marker"))
+
+write_tsv(out_df, data_out)
+
