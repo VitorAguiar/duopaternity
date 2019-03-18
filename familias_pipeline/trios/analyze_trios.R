@@ -195,14 +195,14 @@ trios_exclusion_ident <- trios_df %>%
     group_by(case_no, trio) %>%
     filter(n() == 15, sum(exclusion) >= 3) %>%
     ungroup() %>%
-    select(-pi, -pi_adj)
+    select(-pi, -pi_adj, -exclusion)
 
 trios_exclusion_pp16 <- trios_df %>%
     filter(marker %in% pp16_loci) %>%
     group_by(case_no, trio) %>%
     filter(n() == 15, sum(exclusion) >= 3) %>%
     ungroup() %>%
-    select(-pi, -pi_adj)
+    select(-pi, -pi_adj, -exclusion)
 
 write_tsv(trios_exclusion_original, "./trios_exclusion_original.tsv") 
 write_tsv(trios_exclusion_codis, "./trios_exclusion_codis.tsv") 
