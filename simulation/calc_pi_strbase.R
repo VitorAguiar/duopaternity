@@ -77,7 +77,7 @@ data_out <- paste0("./results/pi_strbase_chunk", CHUNK, ".tsv")
 
 prof_df <- read_tsv(data_in) %>% 
     filter(marker %in% loci) %>%
-    arrange(case_no, loci) 
+    arrange(case_no, marker) 
 
 exc_df <- prof_df %>%
     mutate(exclusion = as.integer(ch_1 != af_1 & ch_2 != af_2 & ch_1 != af_2 & ch_2 != af_1)) %>%
