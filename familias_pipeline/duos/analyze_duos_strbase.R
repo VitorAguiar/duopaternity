@@ -23,7 +23,7 @@ format_data <- function(dat) {
         spread(m, allele)
 }
 
-calc_cpi <- function(df_profiles, loci, pedigrees) {
+calc_pi <- function(df_profiles, loci, pedigrees) {
     
     datamatrix <- df_profiles %>%
 	select(-case_no, -trio) %>%
@@ -32,17 +32,12 @@ calc_cpi <- function(df_profiles, loci, pedigrees) {
 
     result <- FamiliasPosterior(pedigrees, loci, datamatrix, ref = 2)
 
-    tibble(cpi = result$LR[["isFather"]])
-}
-
-run_familias <- function(df_profiles, loci, pedigrees) {
-    
-    datamatrix <- df_profiles %>%
-	select(-case_no, -trio) %>%
+    pi_df <- result$LRperMarker[, "isFather", drop = FALSE] %>%
 	as.data.frame() %>%
-	column_to_rownames("person")
+	rownames_to_column("marker") %>%
+	select(marker, pi = isFather)
 
-    FamiliasPosterior(pedigrees, loci, datamatrix, ref = 2)
+    pi_df
 }
 
 ped1 <- FamiliasPedigree(id = c("child", "AF"), 
@@ -72,19 +67,25 @@ duos_ident <- read_tsv("../trios/trios_exclusion_ident.tsv")
 
 duos_ident_exc <- duos_ident %>%
     mutate(exclusion = as.integer(ch_1 != af_1 & ch_1 != af_2 & ch_2 != af_1 & ch_2 != af_2)) %>%
-    group_by(case_no, trio) %>%
-    summarise(n_exclusions = sum(exclusion))
+    select(case_no, trio, marker, exclusion)
 
-duos_ident_cpi <- duos_ident %>%
+duos_ident_pi <- duos_ident %>%
     format_data() %>%
     group_by(case_no, trio) %>%
-    do(calc_cpi(., loci = familias_ident_loci, pedigrees = mypedigrees)) %>%
+    do(calc_pi(., loci = familias_ident_loci, pedigrees = mypedigrees)) %>%
+    ungroup() %>%
+    left_join(duos_ident_exc, by = c("case_no", "trio", "marker"))
+
+duos_ident_cpi <- duos_ident_pi %>%
+    group_by(case_no, trio) %>%
+    summarise(cpi = prod(pi),
+	      n_exclusions = sum(exclusion)) %>%
     ungroup()
 
+write_tsv(duos_ident_pi, "duos_ident_pi_strbase.tsv")
 write_tsv(duos_ident_cpi, "duos_ident_cpi_strbase.tsv")
 
 duos_ident_inc <- duos_ident_cpi %>%
-    left_join(duos_ident_exc, by = c("case_no", "trio")) %>%
     filter(n_exclusions < 3 & cpi >= 10000)
 
 
@@ -97,19 +98,25 @@ duos_pp16 <- read_tsv("../trios/trios_exclusion_pp16.tsv")
 
 duos_pp16_exc <- duos_pp16 %>%
     mutate(exclusion = as.integer(ch_1 != af_1 & ch_1 != af_2 & ch_2 != af_1 & ch_2 != af_2)) %>%
-    group_by(case_no, trio) %>%
-    summarise(n_exclusions = sum(exclusion)) 
+    select(case_no, trio, marker, exclusion)
 
-duos_pp16_cpi <- duos_pp16 %>%
+duos_pp16_pi <- duos_pp16 %>%
     format_data() %>%
     group_by(case_no, trio) %>%
-    do(calc_cpi(., loci = familias_pp16_loci, pedigrees = mypedigrees)) %>%
+    do(calc_pi(., loci = familias_pp16_loci, pedigrees = mypedigrees)) %>%
+    ungroup() %>%
+    left_join(duos_pp16_exc, by = c("case_no", "trio", "marker"))
+
+duos_pp16_cpi <- duos_pp16_pi %>%
+    group_by(case_no, trio) %>%
+    summarise(cpi = prod(pi),
+	      n_exclusions = sum(exclusion)) %>%
     ungroup()
 
+write_tsv(duos_pp16_pi, "duos_pp16_pi_strbase.tsv")
 write_tsv(duos_pp16_cpi, "duos_pp16_cpi_strbase.tsv")
 
 duos_pp16_inc <- duos_pp16_cpi %>%
-    left_join(duos_pp16_exc, by = c("case_no", "trio")) %>%
     filter(n_exclusions < 3 & cpi >= 10000)
 
 inclusion_df <- bind_rows(identifiler = duos_ident_inc,

@@ -57,6 +57,7 @@ all_loci <- sort(readLines("../../input_data/loci.txt"))
 familias_all_loci <- map(all_loci, make_familias_locus, freqs = freqs)
 
 codis_loci <- readLines("../../input_data/codis_loci.txt")
+codisplus_loci <- readLines("../../input_data/codisplus_loci.txt")
 ident_loci <- readLines("../../input_data/identifiler_loci.txt")
 pp16_loci <- readLines("../../input_data/pp16_loci.txt")
 
@@ -90,6 +91,15 @@ trios_cpi_codis <- trios_df %>%
 	      cpi = prod(pi_adj)) %>%
     ungroup()
 
+trios_cpi_codisplus <- trios_df %>%
+    filter(marker %in% codisplus_loci) %>%
+    group_by(case_no, trio) %>%
+    filter(n() == 20) %>%
+    summarise(n_loci = n(), 
+	      n_exclusions = sum(exclusion),
+	      cpi = prod(pi_adj)) %>%
+    ungroup()
+
 trios_cpi_ident <- trios_df %>%
     filter(marker %in% ident_loci) %>%
     group_by(case_no, trio) %>%
@@ -111,6 +121,7 @@ trios_cpi_pp16 <- trios_df %>%
 trios_sets <- 
     list(original = trios_cpi_original,
 	 codis = trios_cpi_codis,
+	 codisplus = trios_cpi_codisplus,
 	 identifiler = trios_cpi_ident,
 	 pp16 = trios_cpi_pp16) %>%
     bind_rows(.id = "marker_set") %>%
@@ -119,64 +130,18 @@ trios_sets <-
 trios_exclusions <- trios_sets %>%
     filter(n_exclusions >= 3)
 
-trios_inconclusive <- trios_sets %>%
-    filter(n_exclusions < 3, cpi < 10000)
-
-trios_inclusions <- trios_sets %>%
-    filter(n_exclusions < 3, cpi >= 10000)
-
 
 # total trios
 total_trios <- 
     left_join(trios_sets %>% count(marker_set),
 	      trios_exclusions %>% count(marker_set), by = c("marker_set")) %>%
     rename(total = n.x, exclusion = n.y) %>%
-    mutate(marker_set = factor(marker_set, levels = c("original", "codis", "identifiler", "pp16"))) %>%
+    mutate(marker_set = factor(marker_set, levels = c("original", "codis", "codisplus", "identifiler", "pp16"))) %>%
     arrange(marker_set)
 
 write_tsv(total_trios, "./total_trios.tsv")
 
-
-# inclusion to exclusion
-inc_to_exc <- 
-    left_join(trios_exclusions, trios_cpi_original, by = c("case_no", "trio")) %>%
-    group_by(marker_set) %>%
-    summarise(n = sum(n_exclusions.y < 3 & cpi.y >= 10000)) %>%
-    mutate(before = "inclusion", after = "exclusion")
-
-# exclusion to inclusion
-exc_to_inc <- 
-    left_join(trios_inclusions, trios_cpi_original, by = c("case_no", "trio")) %>%
-    group_by(marker_set) %>%
-    summarise(n = sum(n_exclusions.y >= 3)) %>%
-    mutate(before = "exclusion", after = "inclusion")
-
-# exclusion to inconclusive
-exc_to_inconc <- 
-    left_join(trios_inconclusive, trios_cpi_original, by = c("case_no", "trio")) %>%
-    group_by(marker_set) %>%
-    summarise(n = sum(n_exclusions.y >= 3)) %>%
-    mutate(before = "exclusion", after = "inconclusive")
-
-# inclusion to inconclusive
-inc_to_inconc <- 
-    left_join(trios_inconclusive, trios_cpi_original, by = c("case_no", "trio")) %>%
-    group_by(marker_set) %>%
-    summarise(n = sum(n_exclusions.y < 3 & cpi.y >= 10000)) %>%
-    mutate(before = "inclusion", after = "inconclusive")
-
-reduction_effect_df <- 
-    bind_rows(inc_to_exc, exc_to_inc, exc_to_inconc, inc_to_inconc) %>%
-    filter(marker_set != "original") %>%
-    select(before, after, marker_set = marker_set, n) %>%
-    mutate(marker_set = factor(marker_set, levels = c("original", "codis", "identifiler", "pp16"))) %>%
-    arrange(before, after, marker_set)
-
-write_tsv(reduction_effect_df, "./reduction_of_loci.tsv")
-
-
 # separate sets
-
 trios_exclusion_original <- trios_df %>%
     group_by(case_no, trio) %>%
     filter(sum(exclusion) >= 3) %>%
@@ -187,6 +152,13 @@ trios_exclusion_codis <- trios_df %>%
     filter(marker %in% codis_loci) %>%
     group_by(case_no, trio) %>%
     filter(n() == 18, sum(exclusion) >= 3) %>%
+    ungroup() %>%
+    select(-pi, -pi_adj, -exclusion)
+
+trios_exclusion_codisplus <- trios_df %>%
+    filter(marker %in% codisplus_loci) %>%
+    group_by(case_no, trio) %>%
+    filter(n() == 20, sum(exclusion) >= 3) %>%
     ungroup() %>%
     select(-pi, -pi_adj, -exclusion)
 
@@ -206,6 +178,7 @@ trios_exclusion_pp16 <- trios_df %>%
 
 write_tsv(trios_exclusion_original, "./trios_exclusion_original.tsv") 
 write_tsv(trios_exclusion_codis, "./trios_exclusion_codis.tsv") 
+write_tsv(trios_exclusion_codisplus, "./trios_exclusion_codisplus.tsv") 
 write_tsv(trios_exclusion_ident, "./trios_exclusion_ident.tsv") 
 write_tsv(trios_exclusion_pp16, "./trios_exclusion_pp16.tsv") 
 

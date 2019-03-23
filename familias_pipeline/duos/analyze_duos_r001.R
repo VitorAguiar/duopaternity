@@ -52,6 +52,29 @@ mypedigrees <- list(isFather = ped1, unrelated = ped2)
 
 freqs <- read_tsv("../../input_data/allele_frequency.tsv")
 
+# CODIS+
+codis_loci <- sort(readLines("../../input_data/codisplus_loci.txt"))
+familias_codisplus_loci <- map(codis_loci, make_familias_locus, freqs = freqs)
+
+duos_codisplus <- read_tsv("../trios/trios_exclusion_codisplus.tsv") %>%
+    format_data() %>%
+    group_by(case_no, trio) %>%
+    do(calc_pi(., loci = familias_codisplus_loci, pedigrees = mypedigrees)) %>%
+    ungroup() %>%
+    mutate(adj_pi = ifelse(pi == 0, 0.001, pi),
+	   exclusion = as.integer(pi == 0))
+
+duos_codisplus_cpi <- duos_codisplus %>%
+    group_by(case_no, trio) %>%
+    summarise(cpi = prod(adj_pi),
+	      n_exclusions = sum(exclusion)) %>%
+    ungroup() 
+
+write_tsv(duos_codisplus, "duos_codisplus_pi_r001.tsv")
+write_tsv(duos_codisplus_cpi, "duos_codisplus_cpi_r001.tsv")
+
+duos_codisplus_inc <- duos_codisplus_cpi %>%
+    filter(n_exclusions < 3 & cpi >= 10000)
 
 # CODIS
 codis_loci <- sort(readLines("../../input_data/codis_loci.txt"))
@@ -71,6 +94,7 @@ duos_codis_cpi <- duos_codis %>%
 	      n_exclusions = sum(exclusion)) %>%
     ungroup() 
 
+write_tsv(duos_codis, "duos_codis_pi_r001.tsv")
 write_tsv(duos_codis_cpi, "duos_codis_cpi_r001.tsv")
 
 duos_codis_inc <- duos_codis_cpi %>%
@@ -95,6 +119,7 @@ duos_ident_cpi <- duos_ident %>%
 	      n_exclusions = sum(exclusion)) %>%
     ungroup()
 
+write_tsv(duos_ident, "duos_ident_pi_r001.tsv") 
 write_tsv(duos_ident_cpi, "duos_ident_cpi_r001.tsv")
 
 duos_ident_inc <- duos_ident_cpi %>%
@@ -119,13 +144,16 @@ duos_pp16_cpi <- duos_pp16 %>%
 	      n_exclusions = sum(exclusion)) %>%
     ungroup() 
 
+write_tsv(duos_pp16, "duos_pp16_pi_r001.tsv")
 write_tsv(duos_pp16_cpi, "duos_pp16_cpi_r001.tsv")
+
 
 duos_pp16_inc <- duos_pp16_cpi %>%
     filter(n_exclusions < 3 & cpi >= 10000)
 
 
 inclusion_df <- bind_rows(codis = duos_codis_inc,
+			  codisplus = duos_codisplus_inc,
 			  identifiler = duos_ident_inc,
 			  pp16 = duos_pp16_inc, .id = "marker_set")
 
