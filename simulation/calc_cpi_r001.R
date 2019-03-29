@@ -1,6 +1,7 @@
 library(tidyverse)
 
 codis_loci <- readLines("../input_data/codis_loci.txt")
+codisplus_loci <- readLines("../input_data/codisplus_loci.txt")
 ident_loci <- readLines("../input_data/identifiler_loci.txt")
 pp16_loci <- readLines("../input_data/pp16_loci.txt")
 
@@ -23,6 +24,15 @@ cpi_r001_codis <- simul_r001 %>%
     ungroup()
 
 write_tsv(cpi_r001_codis, "./results/cpi_r001_codis.tsv")
+
+cpi_r001_codisplus <- simul_r001 %>%
+    filter(marker %in% codisplus_loci) %>%
+    group_by(case_no) %>%
+    summarise(cpi = prod(adj_pi),
+	      n_exclusions = sum(exclusion)) %>%
+    ungroup()
+
+write_tsv(cpi_r001_codisplus, "./results/cpi_r001_codisplus.tsv")
 
 cpi_r001_ident <- simul_r001 %>%
     filter(marker %in% ident_loci) %>%

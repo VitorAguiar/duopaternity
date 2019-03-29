@@ -5,10 +5,14 @@ library(tidyverse)
 
 dat_r001_all <- read_tsv("./results/cpi_r001_all.tsv")
 dat_r001_codis <- read_tsv("./results/cpi_r001_codis.tsv")
+dat_r001_codisplus <- read_tsv("./results/cpi_r001_codisplus.tsv")
 dat_r001_ident <- read_tsv("./results/cpi_r001_ident.tsv")
 dat_r001_pp16 <- read_tsv("./results/cpi_r001_pp16.tsv")
 
 inclusion_r001_codis <- dat_r001_codis %>%
+    summarise(n = mean(n_exclusions < 3 & cpi >= 10000)*100)
+
+inclusion_r001_codisplus <- dat_r001_codisplus %>%
     summarise(n = mean(n_exclusions < 3 & cpi >= 10000)*100)
 
 inclusion_r001_ident <- dat_r001_ident %>%

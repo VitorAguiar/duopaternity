@@ -128,7 +128,7 @@ trios_sets <-
     arrange(case_no, trio, desc(n_loci), marker_set)
 
 trios_exclusions <- trios_sets %>%
-    filter(n_exclusions >= 3)
+    filter(n_exclusions >= 3, cpi < 10000)
 
 
 # total trios

@@ -6,26 +6,29 @@ total_trios <- read_tsv("../familias_pipeline/trios/total_trios.tsv") %>%
     spread(marker_set, n) %>%
     select(-i)
 
-obs_r001 <- 
-    read_tsv("../familias_pipeline/duos/false_inclusions_r001.tsv") %>%
-    count(marker_set) %>%
-    spread(marker_set, n)
-
-obs_strbase <- 
-    read_tsv("../familias_pipeline/duos/false_inclusions_strbase.tsv") %>%
-    count(marker_set) %>%
-    spread(marker_set, n)
-
 #r001 
 
 dat_r001_all <- read_tsv("./results/cpi_r001_all.tsv")
 dat_r001_codis <- read_tsv("./results/cpi_r001_codis.tsv")
+dat_r001_codisplus <- read_tsv("./results/cpi_r001_codisplus.tsv")
 dat_r001_ident <- read_tsv("./results/cpi_r001_ident.tsv")
 dat_r001_pp16 <- read_tsv("./results/cpi_r001_pp16.tsv")
 
 inclusion_r001_codis <- dat_r001_codis %>%
     slice(1:(total_trios$codis*1000)) %>%
     mutate(slot = rep(1:total_trios$codis, each = 1000)) %>%
+    group_by(slot) %>%
+    filter(n_exclusions < 3, cpi >= 10000) %>%
+    ungroup()
+
+simul_codis_r001 <- inclusion_r001_codis %>% 
+    count(slot) %>%
+    filter(n >= obs_r001$codis) %>%
+    count()
+
+inclusion_r001_codisplus <- dat_r001_codisplus %>%
+    slice(1:(total_trios$codisplus*1000)) %>%
+    mutate(slot = rep(1:total_trios$codisplus, each = 1000)) %>%
     group_by(slot) %>%
     filter(n_exclusions < 3, cpi >= 10000) %>%
     ungroup()
