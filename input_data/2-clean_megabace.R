@@ -1,21 +1,20 @@
 library(tidyverse)
 
-loci <- readLines("./loci.txt")
+#loci <- readLines("./loci.txt")
 
 data_mega <- 
-    readLines("./old_data/dadosDNA", skip = 5) %>%
+    read_lines("./old_data/dadosDNA", skip = 5) %>%
     split(cumsum(grepl("^\\d{5,}", .))) %>%
     setNames(map(., 1)) %>%
     map(~.[-1]) %>%
     map(~.[!grepl("amel", ., ignore.case = TRUE)]) %>% 
     map(~sub("^;;;;;", "", .)) %>%
     map(~.[grepl("M1\\|F\\d\\|SP1;", .)]) %>%
-    keep(~length(.) >= 15L) %>%
+    keep(~length(.) >= 18L) %>%
     enframe("info", "genos") %>%
-    separate(info, c("case_no", "date", "case_type", "state", "subject_info"),
-	   sep = ";") %>%
+    separate(info, c("case_no", "date", "case_type", "state", "subject_info"), sep = ";") %>%
     mutate(case_no = as.integer(case_no), 
-	 case_type = toupper(case_type)) %>%
+	   case_type = toupper(case_type)) %>%
     filter(case_no >= 101945L, case_type %in% c("", "TRIO"))
 
 data_genos <- data_mega %>%
@@ -23,9 +22,8 @@ data_genos <- data_mega %>%
     unnest() %>%
     extract(genos, c("trio", "genos", "marker"), "([^;]+);(.*);([^;]+)") %>%
     mutate(marker = gsub(" ", "", marker)) %>%
-    filter(marker %in% loci) %>%
-    extract(genos, c("g_M", "g_F", "g_SP", "PI"),
-	  "^([0-9.]*;[0-9.]*);([0-9.]*;[0-9.]*);([0-9.]*;[0-9.]*);(.*)") %>%
+    #filter(marker %in% loci) %>%
+    extract(genos, c("g_M", "g_F", "g_SP", "PI"), "^([0-9.]*;[0-9.]*);([0-9.]*;[0-9.]*);([0-9.]*;[0-9.]*);(.*)") %>%
     mutate(trio = gsub("\\|", "_", trio)) %>%
     separate(g_M, c("a.1_M", "a.2_M"), sep = ";") %>%
     separate(g_F, c("a.1_F", "a.2_F"), sep = ";") %>%
@@ -54,7 +52,7 @@ data_genos_uniq <- data_genos %>%
     ungroup() %>%
     spread(info, allele) %>%
     add_count(case_no, trio) %>%
-    filter(n >= 15L) %>%
+    filter(n >= 18L) %>%
     select(case_no, trio, marker, m_1, m_2, ch_1, ch_2, af_1, af_2)
 
 write_tsv(data_genos_uniq, "./megabace_filtered.tsv")
