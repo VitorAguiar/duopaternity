@@ -9,6 +9,7 @@ dat_long <- dat %>%
     mutate(case_no = format(case_no, scientific = FALSE)) %>%
     gather(ind, allele, m_1:af_2) %>%
     separate(ind, c("parent", "hap"), sep = "_") %>%
-    unite(id, c("case_no", "parent"), sep = "_")
+    unite(id, c("case_no", "parent"), sep = "_") %>%
+    arrange(id)
 
 write_tsv(dat_long, "./str_parents.tsv")
