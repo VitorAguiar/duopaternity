@@ -40,14 +40,15 @@ for (i in indices_chunk$index) {
 	mutate(shr = pmax(i1, i2)) %>%
 	select(-i1, -i2) %>%
 	group_by(id.x, id.y) %>%
-	summarise(total = mean(shr == 2),
-		  partial = mean(shr == 1)) %>%
+	summarise(total = sum(shr == 2),
+		  partial = sum(shr == 1)) %>%
 	ungroup()
 
     counter <- counter + 1L
 }
 
-out_tbl <- bind_rows(out_list)
+out_tbl <- bind_rows(out_list) %>%
+    filter(total > 13)
 
 out <- sprintf("%s_%d.tsv", outPrefix, chunk)
 write_tsv(out_tbl, out)

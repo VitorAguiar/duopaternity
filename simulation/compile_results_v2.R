@@ -64,7 +64,8 @@ simul_pp16_r001 <- inclusion_r001_pp16 %>%
 
 #STRBASE
 
-dat_strbase_all <- read_tsv("./results/cpi_strbase_all.tsv")
+ident_loci <- readLines("../input_data/identifiler_loci.txt")
+pp16_loci <- readLines("../input_data/pp16_loci.txt")
 dat_strbase_ident <- read_tsv("./results/cpi_strbase_ident.tsv")
 dat_strbase_pp16 <- read_tsv("./results/cpi_strbase_pp16.tsv")
 
@@ -76,10 +77,29 @@ inclusion_strbase_ident <- dat_strbase_ident %>%
     ungroup()
 
 simul_ident_strbase <- inclusion_strbase_ident %>% 
-    count(slot) %>%
-    filter(n >= obs_strbase$identifiler) %>%
-    count()
+    count(slot, sort = TRUE)
 
+####
+pi_strb <- paste0("./results/pi_strbase_chunk", 1:25, ".tsv") %>%
+    map_df(read_tsv)
+
+pi_strb_ident <- pi_strb %>%
+    filter(case_no %in% unique(inclusion_strbase_ident$case_no), 
+	   marker %in% ident_loci)
+
+pi_strb_ident %>%
+    group_by(case_no) %>%
+    filter(pi == max(pi)) %>%
+    ungroup() %>%
+    count(marker, sort = TRUE) 
+
+pi_strb_ident %>%
+    group_by(marker) %>% 
+    summarise(m = median(pi)) %>%
+    arrange(desc(m))
+
+
+####
 inclusion_strbase_pp16 <- dat_strbase_pp16 %>%
     slice(1:(total_trios$pp16*1000)) %>%
     mutate(slot = rep(1:total_trios$pp16, each = 1000)) %>%
@@ -88,7 +108,21 @@ inclusion_strbase_pp16 <- dat_strbase_pp16 %>%
     ungroup()
 
 simul_pp16_strbase <- inclusion_strbase_pp16 %>% 
-    count(slot) %>%
-    filter(n >= obs_strbase$pp16) %>%
-    count()
+    count(slot, sort = TRUE)
 
+####
+pi_strb_pp16 <- pi_strb %>%
+    filter(case_no %in% unique(inclusion_strbase_pp16$case_no), 
+	   marker %in% pp16_loci)
+
+pi_strb_pp16 %>%
+    group_by(case_no) %>%
+    filter(any(exclusion == 1))
+
+pi_strb_pp16 %>%
+    group_by(marker) %>% 
+    summarise(m = median(pi)) %>%
+    arrange(desc(m))
+
+1 - 13352/24797
+1 - 16.2/27.1

@@ -61,7 +61,7 @@ kits_out <-
     select(case_no, trio, marker, m_1, m_2, ch_1, ch_2, af_1, af_2) %>%
     drop_na() %>%
     add_count(case_no, trio) %>%
-    filter(n >= 18L) %>%
+    filter(n >= 15L) %>%
     select(-n)
 
 write_tsv(kits_out, "./abi_filtered.tsv")
