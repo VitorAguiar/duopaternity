@@ -2,23 +2,22 @@ library(tidyverse)
   
 read_data <- function(path) {
 
-    read_csv(path, guess_max = 10000) %>%
-    select(matches("sample.*name|run.*name|marker|allele", ignore.case = TRUE)) %>%
-    setNames(names(.) %>% tolower() %>% trimws() %>% gsub(" ", "_", .)) %>%
-    separate(sample_name, c("case_no", "subject_id"), sep = "-", extra = "drop") %>%
-    mutate_all(trimws) %>%
-    mutate(case_no = as.integer(case_no)) %>%
-    mutate_at(vars(allele_1, allele_2), as.numeric) %>%
-    drop_na() %>%
-    filter(case_no >= 206807L, grepl("F\\d|M1|SP1", subject_id)) %>%
-    group_by(case_no) %>%
-    filter(all(c("F1", "M1", "SP1") %in% subject_id)) %>%
-    ungroup() %>%
-    mutate(a1 = pmin(allele_1, allele_2), a2 = pmax(allele_1, allele_2)) %>%
-    select(case_no, subject_id, run_name, marker, allele_1 = a1, allele_2 = a2)
+    path %>%
+	read_csv(guess_max = 10000) %>%
+	select(matches("sample.*name|run.*name|marker|allele", ignore.case = TRUE)) %>%
+	setNames(names(.) %>% tolower() %>% trimws() %>% gsub(" ", "_", .)) %>%
+	separate(sample_name, c("case_no", "subject_id"), sep = "-", extra = "drop") %>%
+	mutate_all(trimws) %>%
+	mutate(case_no = as.integer(case_no)) %>%
+	mutate_at(vars(allele_1, allele_2), as.numeric) %>%
+	drop_na() %>%
+	filter(grepl("F\\d|M1|SP1", subject_id)) %>%
+	group_by(case_no) %>%
+	filter(all(c("F1", "M1", "SP1") %in% subject_id)) %>%
+	ungroup() %>%
+	mutate(a1 = pmin(allele_1, allele_2), a2 = pmax(allele_1, allele_2)) %>%
+	select(case_no, subject_id, run_name, marker, allele_1 = a1, allele_2 = a2)
 }
-
-#loci <- readLines("./loci.txt")
 
 kit1 <- list.files("./ngm", full.names = TRUE, pattern = "^\\d+.*csv$") %>%
     map_df(read_data)
@@ -36,7 +35,6 @@ kit1_clean <- filter(kit1, !case_no %in% mistmatch_kits)
 kit2_clean <- filter(kit2, !case_no %in% mistmatch_kits)
 
 kits_merge <- bind_rows(kit1_clean, kit2_clean) %>%
-    #filter(marker %in% loci, allele_1 < 99, allele_2 < 99) %>%
     filter(allele_1 < 99, allele_2 < 99) %>%
     drop_na() %>%
     distinct(case_no, subject_id, marker, allele_1, allele_2) %>%
