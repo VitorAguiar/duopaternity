@@ -20,7 +20,7 @@ dups <- read_tsv("./sharetable_all.tsv") %>%
     arrange(grp, id)
 
 # here we see that many duplicates have different alleles for some loci
-# potential genotyping errors
+# Maybe highly related individuals, but potentially genotyping errors
 # especially at the D1S
 dups %>%
     left_join(profilesdf) %>%
@@ -67,7 +67,6 @@ freq_df <- bind_rows(non_dups_to_calc, dups_to_calc) %>%
     mutate(f = n/sum(n)) %>%
     ungroup()
 
-
 # Alleles in children not observed in parents
 freq_alleles <- select(freq_df, marker, allele)
 
@@ -79,6 +78,8 @@ all_alleles <- all_profiles %>%
 not_in_parents <- anti_join(all_alleles, freq_alleles) %>% distinct(marker, allele)
 
 print(not_in_parents, n = Inf)
+
+all_profiles %>%  filter(ch_1 == 89 | ch_2 == 89)
 
 
 # Update allele freqs
