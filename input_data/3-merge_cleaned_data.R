@@ -1,19 +1,25 @@
 library(tidyverse)
 
+strinfo <- read_tsv("./str_info.tsv")
+
 abi <- read_tsv("./abi_filtered.tsv")
 mega <- read_tsv("./megabace_filtered.tsv")
 
-i <- inner_join(select(abi, 1:3), select(mega, 1:3))
+abilong <- abi %>% 
+    gather(hap, allele, m_1:af_2)
 
-mis <- anti_join(inner_join(abi, i), inner_join(mega, i)) %>%
+megalong <- mega %>% 
+    gather(hap, allele, m_1:af_2)
+
+notcompatible <- inner_join(abilong, megalong, by = c("case_no", "trio", "marker", "hap")) %>%
+    filter(allele.x != allele.y) %>%
     distinct(case_no, trio, marker)
 
-abi_clean <- anti_join(abi, mis)
-mega_clean <- anti_join(mega, mis)
+abi_clean <- anti_join(abi, notcompatible)
+mega_clean <- anti_join(mega, notcompatible)
 
-abi_sub <- filter(abi_clean, !case_no %in% mega_clean$case_no)
-
-merge_df <- bind_rows(mega_clean, abi_sub) %>%
+merge_df <- bind_rows(mega_clean, abi_clean) %>%
+    distinct(case_no, trio, marker, .keep_all = TRUE) %>%
     arrange(case_no, trio, marker) %>%
     add_count(case_no, trio) %>%
     filter(n >= 15L) %>%
@@ -36,4 +42,16 @@ final_merge_data <- merge_clean %>%
     filter(n >= 15L) %>%
     select(-n)
 
-write_tsv(final_merge_data, "./integrated_data.tsv")
+final_clean <- final_merge_data %>% 
+    gather(hap, allele, m_1:af_2) %>%
+    mutate(microvariant = allele %% 1L * 10L) %>%
+    left_join(strinfo, by = c("marker" = "locus")) %>%
+    filter(microvariant < repeats) %>%
+    select(case_no:allele) %>%
+    spread(hap, allele) %>%
+    select(case_no, trio, marker, m_1, m_2, ch_1, ch_2, af_1, af_2) %>%
+    add_count(case_no, trio) %>%
+    filter(n >= 15L) %>%
+    select(-n)
+
+write_tsv(final_clean, "./integrated_data.tsv")

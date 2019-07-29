@@ -42,11 +42,14 @@ data_genos_uniq <- data_genos %>%
     ungroup() %>%
     select(-n) %>%
     gather(info, allele, -case_no, -trio, -marker) %>%
-    group_by(case_no, trio) %>%
-    filter(!all(allele %in% c(0, 7, 8, 9, 99))) %>%
     group_by(case_no, trio, marker) %>%
-    filter(!any(allele > 99)) %>%
+    filter(!any(allele > 80)) %>%
+    group_by(case_no, trio, info) %>%
+    mutate(i = n_distinct(allele) > 2) %>%
+    group_by(case_no, trio) %>%
+    filter(all(i == TRUE)) %>%
     ungroup() %>%
+    select(-i) %>%
     spread(info, allele) %>%
     add_count(case_no, trio) %>%
     filter(n >= 15L) %>%
