@@ -62,7 +62,7 @@ all_alleles <- all_profiles %>%
 not_in_parents <- anti_join(all_alleles, freq_alleles) %>% distinct(marker, allele)
 
 # Update allele freqs
-# alleles with f > 5/2N or alleles not observed in parents will get f = 5/2N
+# alleles with f < 5/2N or alleles not observed in parents will get f = 5/2N
 updated_freq_df <- bind_rows(freq_df, not_in_parents) %>%
     group_by(marker) %>%
     mutate(f2 = ifelse(n < 5 | is.na(n), 5/sum(n, na.rm = TRUE), f),
