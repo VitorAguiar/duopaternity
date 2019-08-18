@@ -49,6 +49,7 @@ final_clean <- final_merge_data %>%
     filter(microvariant < repeats) %>%
     select(case_no:allele) %>%
     spread(hap, allele) %>%
+    drop_na() %>%
     select(case_no, trio, marker, m_1, m_2, ch_1, ch_2, af_1, af_2) %>%
     add_count(case_no, trio) %>%
     filter(n >= 15L) %>%

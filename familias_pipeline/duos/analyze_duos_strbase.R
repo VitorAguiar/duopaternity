@@ -3,13 +3,13 @@ library(tidyverse)
 
 make_familias_locus <- function(locus, freqs, mutation) {
 
-    FamiliasLocus(frequencies = freqs$f[freqs$marker == locus],
-		  allelenames = freqs$allele[freqs$marker == locus], 
-		  name = locus,
-		  MutationModel = "Stepwise",
-		  MutationRate = mutation$rate[mutation$marker == locus],
-		  MutationRate2 = 0.00001,
-		  MutationRange = 0.1)
+    FamiliasLocus(frequencies = freqs$adj_f[freqs$marker == locus],
+                  allelenames = freqs$allele[freqs$marker == locus], 
+                  name = locus,
+                  MutationModel = "Stepwise",
+                  MutationRate = mutation$rate[mutation$marker == locus],
+                  MutationRate2 = 0.00001,
+                  MutationRange = 0.1)
 }
 
 format_data <- function(dat) {
@@ -26,42 +26,52 @@ format_data <- function(dat) {
 calc_pi <- function(df_profiles, loci, pedigrees) {
     
     datamatrix <- df_profiles %>%
-	select(-case_no, -trio) %>%
-	as.data.frame() %>%
-	column_to_rownames("person")
+    	select(-case_no, -trio) %>%
+    	as.data.frame() %>%
+    	column_to_rownames("person")
 
     result <- FamiliasPosterior(pedigrees, loci, datamatrix, ref = 2)
 
     pi_df <- result$LRperMarker[, "isFather", drop = FALSE] %>%
-	as.data.frame() %>%
-	rownames_to_column("marker") %>%
-	select(marker, pi = isFather)
+    	as.data.frame() %>%
+    	rownames_to_column("marker") %>%
+    	select(marker, pi = isFather)
 
     pi_df
 }
 
 ped1 <- FamiliasPedigree(id = c("child", "AF"), 
-			 dadid = c("AF", NA),
-			 momid = c(NA,NA),
-			 sex = c("female", "male"))
+                         dadid = c("AF", NA),
+                         momid = c(NA, NA),
+                         sex = c("female", "male"))
 
 ped2 <- FamiliasPedigree(id = c("child", "AF"), 
-			 dadid = c(NA, NA),
-			 momid = c(NA,NA),
-			 sex = c("female", "male"))
+                         dadid = c(NA, NA),
+                         momid = c(NA, NA),
+                         sex = c("female", "male"))
 
 mypedigrees <- list(isFather = ped1, unrelated = ped2)
 
-freqs <- read_tsv("../../input_data/allele_frequency.tsv")
+freqs <- read_tsv("../../allele_frequencies/allele_frequencies.tsv")
 
-mutation_rates <- read_tsv("../../input_data/strbase_mutation_rates.tsv") %>%
-    arrange(marker)
+mutation_rates <- "../../input_data/aabb_mutation_rates.tsv" %>%
+    read_tsv()
+
+trios <- read_tsv("../../input_data/integrated_data.tsv")
+
+trios_exc <- read_tsv("../trios/trios_cpi.tsv") %>%
+    filter(n_loci >= 18, n_exclusions >= 4) %>%
+    select(case_no, trio) %>%
+    inner_join(trios)
+
+all_loci <- sort(unique(trios_exc$marker))
 
 
-# Identifiler
-ident_loci <- sort(readLines("../../input_data/identifiler_loci.txt"))
-familias_ident_loci <- map(ident_loci, make_familias_locus, freqs = freqs,
-			   mutation = mutation_rates)
+all_loci[! all_loci %in% mutation_rates$marker]
+
+
+familias_ident_loci <- map(all_loci, make_familias_locus, freqs = freqs,
+                           mutation = mutation_rates)
 
 duos_ident <- read_tsv("../trios/trios_exclusion_ident.tsv")
 
@@ -88,39 +98,4 @@ write_tsv(duos_ident_cpi, "duos_ident_cpi_strbase.tsv")
 duos_ident_inc <- duos_ident_cpi %>%
     filter(n_exclusions < 3 & cpi >= 10000)
 
-
-# PP16
-pp16_loci <- sort(readLines("../../input_data/pp16_loci.txt"))
-familias_pp16_loci <- map(pp16_loci, make_familias_locus, freqs = freqs,
-			   mutation = mutation_rates)
-
-duos_pp16 <- read_tsv("../trios/trios_exclusion_pp16.tsv")
-
-duos_pp16_exc <- duos_pp16 %>%
-    mutate(exclusion = as.integer(ch_1 != af_1 & ch_1 != af_2 & ch_2 != af_1 & ch_2 != af_2)) %>%
-    select(case_no, trio, marker, exclusion)
-
-duos_pp16_pi <- duos_pp16 %>%
-    format_data() %>%
-    group_by(case_no, trio) %>%
-    do(calc_pi(., loci = familias_pp16_loci, pedigrees = mypedigrees)) %>%
-    ungroup() %>%
-    left_join(duos_pp16_exc, by = c("case_no", "trio", "marker"))
-
-duos_pp16_cpi <- duos_pp16_pi %>%
-    group_by(case_no, trio) %>%
-    summarise(cpi = prod(pi),
-	      n_exclusions = sum(exclusion)) %>%
-    ungroup()
-
-write_tsv(duos_pp16_pi, "duos_pp16_pi_strbase.tsv")
-write_tsv(duos_pp16_cpi, "duos_pp16_cpi_strbase.tsv")
-
-duos_pp16_inc <- duos_pp16_cpi %>%
-    filter(n_exclusions < 3 & cpi >= 10000)
-
-inclusion_df <- bind_rows(identifiler = duos_ident_inc,
-                          pp16 = duos_pp16_inc, .id = "marker_set")
-
-write_tsv(inclusion_df, "./false_inclusions_strbase.tsv")
 

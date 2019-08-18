@@ -12,7 +12,7 @@ profilesdf <- read_tsv("../input_data/integrated_data.tsv") %>%
 profiles_groups <- profilesdf %>%
     group_split(marker) %>%
     map_df(~mutate(., g = group_indices(., h1, h2))) %>%
-    select(id, marker, g)%>%
+    select(id, marker, g) %>%
     arrange(marker, g, id)
 
 write_tsv(profiles_groups, "profile_groups.tsv")

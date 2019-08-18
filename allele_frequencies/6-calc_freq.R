@@ -51,9 +51,9 @@ freq_df <- bind_rows(non_dups_to_calc, dups_to_calc) %>%
     mutate(f = n/sum(n)) %>%
     ungroup()
 
-# Alleles in children not observed in parents
 freq_alleles <- select(freq_df, marker, allele)
 
+# Alleles in children not observed in parents
 all_profiles <- read_tsv("../input_data/integrated_data.tsv")
 
 all_alleles <- all_profiles %>%
