@@ -1,6 +1,6 @@
 library(tidyverse)
 
-strinfo <- read_tsv("./str_info.tsv")
+strinfo <- read_tsv("./str_info.tsv", col_types = "ci")
 
 abi <- read_tsv("./abi_filtered.tsv")
 mega <- read_tsv("./megabace_filtered.tsv")
@@ -42,11 +42,11 @@ final_merge_data <- merge_clean %>%
     filter(n >= 15L) %>%
     select(-n)
 
-final_clean <- final_merge_data %>% 
+final_clean <- final_merge_data %>%
     gather(hap, allele, m_1:af_2) %>%
-    mutate(microvariant = allele %% 1L * 10L) %>%
+    mutate(microvar = allele %% 1L * 10L) %>% 
     left_join(strinfo, by = c("marker" = "locus")) %>%
-    filter(microvariant < repeats) %>%
+    mutate(allele = ifelse(near(microvar, repeats) | microvar > repeats, NA, allele)) %>%
     select(case_no:allele) %>%
     spread(hap, allele) %>%
     drop_na() %>%
