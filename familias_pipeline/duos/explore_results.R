@@ -1,79 +1,32 @@
 library(tidyverse)
 
+trios <- read_tsv("../../input_data/integrated_data.tsv")
 
-falseinc_r001 <- read_tsv("./false_inclusions_r001.tsv")
-falseinc_strb <- read_tsv("./false_inclusions_strbase.tsv")
+shared16 <- trios %>% filter(marker == "D12S391", (ch_1 == 16.3 | ch_2 == 16.3) & (af_1 == 16.3 | af_2 == 16.3))
+notd7 <- trios %>% filter(marker == "D7S820", ch_1 != af_1 & ch_2 != af_1 & ch_2 != af_1 & ch_2 != af_2)
 
-falseinc_df <- list(r001 = falseinc_r001, strbase = falseinc_strb) %>%
-    bind_rows(.id = "model")
+shared16 %>% filter(case_no %in% notd7$case_no)
+read_tsv("../trios/trios_cpi.tsv") %>% filter(case_no == 250992)
 
-trios <- read_tsv("../trios/trios_pis.tsv")
+trios_cpi <- read_tsv("../trios/trios_cpi.tsv") %>% 
+    filter(n_loci >= 18, n_exclusions >= 4)
 
-# ident
-duos_ident_r001 <- read_tsv("./duos_ident_pi_r001.tsv")
-duos_ident_strb <- read_tsv("./duos_ident_pi_strbase.tsv")
-ident_loci <- sort(readLines("../../input_data/identifiler_loci.txt"))
+duos_pi_r001 <- read_tsv("./duos_pi_r001.tsv")
+duos_cpi_r001 <- read_tsv("./duos_cpi_r001.tsv")
+duos_inclusion_r001 <- read_tsv("./duos_inclusion_r001.tsv", col_types = "dcdd")
 
-trios %>%
-    filter(case_no == 253626, trio == "M1_F1_SP1")
+duos_pi_sw <- read_tsv("./duos_pi_stewise.tsv")
+duos_cpi_sw <- read_tsv("./duos_pi_stewise.tsv")
+duos_inclusion_sw <- read_tsv("./duos_inclusion_stepwise.tsv")
 
-trios %>%
-    filter(case_no == 253626, trio == "M1_F1_SP1", marker %in% ident_loci)
+inclusion_df <- list(r001 = duos_inclusion_r001, stepwise = duos_inclusion_sw) %>%
+    bind_rows(.id = "model") %>%
+    left_join(trios_cpi, by = c("case_no", "trio"), suffix = c(".duo", ".trio"))
 
-duos_ident_r001 %>%
-    filter(case_no == 253626, trio == "M1_F1_SP1")
+duos_cpi_r001 %>% filter(case_no %in% inclusion_df$case_no)
 
-duos_ident_strb %>%
-    filter(case_no == 253626, trio == "M1_F1_SP1")
+x <- duos_pi_r001 %>% filter(case_no %in% inclusion_df$case_no)
+y <- duos_pi_sw %>% filter(case_no %in% inclusion_df$case_no)
 
-# pp16
-duos_pp16_r001 <- read_tsv("./duos_pp16_pi_r001.tsv")
-duos_pp16_strb <- read_tsv("./duos_pp16_pi_strbase.tsv")
-pp16_loci <- sort(readLines("../../input_data/pp16_loci.txt"))
-
-trios %>%
-    filter(case_no == 117770, trio == "M1_F1_SP1", marker %in% pp16_loci)
-
-duos_pp16_r001 %>%
-    filter(case_no == 117770, trio == "M1_F1_SP1")
-
-duos_pp16_strb %>%
-    filter(case_no == 117770, trio == "M1_F1_SP1")
-
-#
-duos_pp16_r001 %>%
-    filter(case_no == 155180, trio == "M1_F1_SP1")
-
-duos_pp16_strb %>% 
-    filter(case_no == 155180, trio == "M1_F1_SP1") %>%
-    summarise(cpi = prod(pi),
-	      n_exclusions = sum(exclusion))
-
-#
-duos_codis_r001 <- read_tsv("./duos_codis_pi_r001.tsv")
-codis_loci <- sort(readLines("../../input_data/codis_loci.txt"))
-
-trios %>%
-    filter(case_no == 250992, trio == "M1_F1_SP1", marker %in% codis_loci) %>%
-    summarise(n_exclusions = sum(exclusion))
-
-duos_codis_r001 %>%
-    filter(case_no == 250992, trio == "M1_F1_SP1") %>%
-    summarise(n_exclusions = sum(exclusion))
-
-#
-duos_codisplus_r001 <- read_tsv("./duos_codisplus_pi_r001.tsv")
-codisplus_loci <- sort(readLines("../../input_data/codisplus_loci.txt"))
-
-trios %>%
-    filter(case_no == 250992, trio == "M1_F1_SP1", marker %in% codisplus_loci) %>%
-    summarise(n_exclusions = sum(exclusion))
-
-duos_codisplus_r001 %>%
-    filter(case_no == 250992, trio == "M1_F1_SP1") %>%
-    summarise(n_exclusions = sum(exclusion))
-
-trios %>%
-    filter(case_no == 250992, trio == "M1_F1_SP1")
-
-
+left_join(x, y, by = c("case_no", "trio", "marker"), suffix = c(".r001", ".sw")) %>%
+    print(n = Inf)

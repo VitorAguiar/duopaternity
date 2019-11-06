@@ -62,13 +62,18 @@ trios_exc <- read_tsv("../trios/trios_cpi.tsv") %>%
 all_loci <- sort(unique(trios_exc$marker))
 familias_loci <- map(all_loci, make_familias_locus, freqs = freqs)
 
+duos_exc <- trios_exc %>%
+    mutate(exclusion = as.integer(ch_1 != af_1 & ch_1 != af_2 & ch_2 != af_1 & ch_2 != af_2)) %>%
+    select(case_no, trio, marker, exclusion)
+
 duos <- trios_exc %>%
     format_data() %>%
     group_by(case_no, trio) %>%
     do(calc_pi(., loci = familias_loci, pedigrees = mypedigrees)) %>%
     ungroup() %>%
-    mutate(adj_pi = ifelse(pi == 0, 0.001, pi),
-           exclusion = as.integer(pi == 0))
+    inner_join(duos_exc, ., by = c("case_no", "trio", "marker")) %>%
+    mutate(adj_pi = ifelse(exclusion == 1 & pi == 0, 0.001, pi)) %>%
+    select(case_no, trio, marker, pi, adj_pi, exclusion)
 
 duos_cpi <- duos %>%
     group_by(case_no, trio) %>%
@@ -76,10 +81,12 @@ duos_cpi <- duos %>%
               n_exclusions = sum(exclusion)) %>%
     ungroup() 
 
+duos_inclusion <- duos_cpi %>%
+    filter(n_exclusions < 4 & cpi >= 10000)
+
 write_tsv(duos, "duos_pi_r001.tsv")
 write_tsv(duos_cpi, "duos_cpi_r001.tsv")
+write_tsv(duos_inclusion, "duos_inclusion_r001.tsv")
 
-duos_inc <- duos_cpi %>%
-    filter(n_exclusions < 4 & cpi >= 10000)
 
 

@@ -59,7 +59,7 @@ all_profiles <- read_tsv("../input_data/integrated_data.tsv")
 all_alleles <- all_profiles %>%
     gather(ind, allele, m_1:af_2)
 
-not_in_parents <- anti_join(all_alleles, freq_alleles) %>% distinct(marker, allele)
+not_in_parents <- anti_join(all_alleles, freq_alleles) %>% count(marker, allele)
 
 # Update allele freqs
 # alleles with f < 5/2N or alleles not observed in parents will get f = 5/2N

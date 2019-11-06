@@ -7,9 +7,13 @@ make_familias_locus <- function(locus, freqs, mutation) {
                   allelenames = freqs$allele[freqs$marker == locus], 
                   name = locus,
                   MutationModel = "Stepwise",
+		  femaleMutationModel = "Equal",
                   MutationRate = mutation$rate[mutation$marker == locus],
-                  MutationRate2 = 0.00001,
-                  MutationRange = 0.1)
+		  femaleMutationRate = 0,
+                  MutationRate2 = 0.001,
+		  femaleMutationRate2 = 0,
+                  MutationRange = 0.5,
+		  femaleMutationRange = 0)
 }
 
 format_data <- function(dat) {
@@ -55,7 +59,9 @@ mypedigrees <- list(isFather = ped1, unrelated = ped2)
 freqs <- read_tsv("../../allele_frequencies/allele_frequencies.tsv")
 
 mutation_rates <- "../../input_data/aabb_mutation_rates.tsv" %>%
-    read_tsv()
+    read_tsv() %>%
+    filter(marker %in% freqs$marker) %>%
+    complete(marker = freqs$marker, fill = list(rate = 0))
 
 trios <- read_tsv("../../input_data/integrated_data.tsv")
 
@@ -65,37 +71,30 @@ trios_exc <- read_tsv("../trios/trios_cpi.tsv") %>%
     inner_join(trios)
 
 all_loci <- sort(unique(trios_exc$marker))
+familias_loci <- map(all_loci, make_familias_locus, freqs = freqs, mutation = mutation_rates)
 
-
-all_loci[! all_loci %in% mutation_rates$marker]
-
-
-familias_ident_loci <- map(all_loci, make_familias_locus, freqs = freqs,
-                           mutation = mutation_rates)
-
-duos_ident <- read_tsv("../trios/trios_exclusion_ident.tsv")
-
-duos_ident_exc <- duos_ident %>%
+duos_exc <- trios_exc %>%
     mutate(exclusion = as.integer(ch_1 != af_1 & ch_1 != af_2 & ch_2 != af_1 & ch_2 != af_2)) %>%
     select(case_no, trio, marker, exclusion)
 
-duos_ident_pi <- duos_ident %>%
+duos <- trios_exc %>%
     format_data() %>%
     group_by(case_no, trio) %>%
-    do(calc_pi(., loci = familias_ident_loci, pedigrees = mypedigrees)) %>%
+    do(calc_pi(., loci = familias_loci, pedigrees = mypedigrees)) %>%
     ungroup() %>%
-    left_join(duos_ident_exc, by = c("case_no", "trio", "marker"))
-
-duos_ident_cpi <- duos_ident_pi %>%
+    inner_join(duos_exc, ., by = c("case_no", "trio", "marker")) %>%
+    mutate(adj_pi = ifelse(exclusion == 1 & pi == 0, 0.001, pi)) %>%
+    select(case_no, trio, marker, pi, adj_pi, exclusion)
+    
+duos_cpi <- duos %>%
     group_by(case_no, trio) %>%
-    summarise(cpi = prod(pi),
-	      n_exclusions = sum(exclusion)) %>%
+    summarise(cpi = prod(adj_pi),
+              n_exclusions = sum(exclusion)) %>%
     ungroup()
 
-write_tsv(duos_ident_pi, "duos_ident_pi_strbase.tsv")
-write_tsv(duos_ident_cpi, "duos_ident_cpi_strbase.tsv")
+duos_inclusion <- duos_cpi %>% 
+    filter(n_exclusions < 4, cpi >= 10000) 
 
-duos_ident_inc <- duos_ident_cpi %>%
-    filter(n_exclusions < 3 & cpi >= 10000)
-
-
+write_tsv(duos, "duos_pi_stewise.tsv")
+write_tsv(duos_cpi, "duos_cpi_stepwise.tsv")
+write_tsv(duos_inclusion, "duos_inclusion_stepwise.tsv")
