@@ -1,6 +1,31 @@
 library(tidyverse)
 
-profilesdf <- read_tsv("../input_data/integrated_data.tsv") %>%
+microvars <- read_tsv("../input_data/str_info.tsv") %>%
+    mutate(mv = map(repeats, ~0:(.x-1))) %>%
+    unnest(mv) %>%
+    select(-repeats)
+
+all_profiles <- read_tsv("../input_data/integrated_data.tsv")   
+
+possible_alleles <- all_profiles %>%
+    pivot_longer(m_1:af_2, names_to = "id", values_to = "allele") %>%
+    distinct(marker, allele) %>%
+    group_by(marker) %>%
+    summarise(minallele = min(allele) - 1,
+	      maxallele = max(allele) + 1) %>%
+    ungroup() %>%
+    mutate(minallele = ifelse(minallele <= 1, 1, minallele),
+	   minallele = floor(minallele),
+	   maxallele = floor(maxallele)) %>%
+    mutate(allelerange = map2(minallele, maxallele, ~.x:.y)) %>%
+    select(marker, allelerange) %>%
+    unnest(allelerange) %>%
+    left_join(microvars, by = c("marker" = "locus")) %>%
+    mutate(allele = ifelse(mv == 0, allelerange, paste(allelerange, mv, sep = ".")),
+	   allele = as.numeric(allele)) %>%
+    select(marker, allele)
+
+profilesdf <- all_profiles %>%
     filter(trio == "M1_F1_SP1") %>%
     select(case_no, marker, m_1, m_2, af_1, af_2) %>%
     gather(id, allele, 3:6) %>%
@@ -53,21 +78,10 @@ freq_df <- bind_rows(non_dups_to_calc, dups_to_calc) %>%
 
 freq_alleles <- select(freq_df, marker, allele)
 
-# Alleles in children not observed in parents
-all_profiles <- read_tsv("../input_data/integrated_data.tsv")
-
-all_alleles <- all_profiles %>%
-    gather(ind, allele, m_1:af_2)
-
-not_in_parents <- anti_join(all_alleles, freq_alleles) %>% count(marker, allele)
-
-# Update allele freqs
-# alleles with f < 5/2N or alleles not observed in parents will get f = 5/2N
-updated_freq_df <- bind_rows(freq_df, not_in_parents) %>%
+all_alleles_freq <- left_join(possible_alleles, freq_df, by = c("marker", "allele")) %>%
+    mutate(n = replace_na(n, 2)) %>%
     group_by(marker) %>%
-    mutate(f2 = ifelse(n < 5 | is.na(n), 5/sum(n, na.rm = TRUE), f),
-	   adj_f = f2/sum(f2)) %>%
-    ungroup() %>%
-    arrange(marker, allele)
+    mutate(f = n/sum(n)) %>%
+    ungroup()
 
-write_tsv(updated_freq_df, "./allele_frequencies.tsv")
+write_tsv(all_alleles_freq, "./allele_frequencies.tsv")
