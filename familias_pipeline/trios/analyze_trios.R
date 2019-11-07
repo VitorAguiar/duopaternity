@@ -3,24 +3,14 @@ library(tidyverse)
 
 make_familias_locus <- function(locus, freqs) {
 
-    FamiliasLocus(frequencies = freqs$adj_f[freqs$marker == locus],
+    FamiliasLocus(frequencies = freqs$f[freqs$marker == locus],
 		  allelenames = freqs$allele[freqs$marker == locus], 
 		  name = locus,
 		  MutationModel = "Equal",
 		  MutationRate = 0)
 }
 
-format_data <- function(dat) {
-
-    dat %>%
-    	gather(hap, allele, 4:9) %>%
-    	separate(hap, c("person", "h"), sep = "_") %>%
-    	mutate(person = recode(person, "m" = "mother", "ch" = "child", "af" = "AF")) %>%
-    	unite("m", c("marker", "h"), sep = ".") %>%
-    	spread(m, allele)
-}
-
-calc_cpi <- function(df_profiles, loci, pedigrees) {
+calc_pi <- function(df_profiles, loci, pedigrees) {
     
     datamatrix <- df_profiles %>%
     	select(-case_no, -trio) %>%
@@ -37,6 +27,7 @@ calc_cpi <- function(df_profiles, loci, pedigrees) {
     pi_df
 }
 
+i_batch <- as.integer(commandArgs(TRUE))[1]
 
 ped1 <- FamiliasPedigree(id = c("mother", "child", "AF"), 
                          dadid = c(NA, "AF", NA),
@@ -55,23 +46,23 @@ freqs <- read_tsv("../../allele_frequencies/allele_frequencies.tsv")
 all_loci <- sort(unique(freqs$marker))
 familias_all_loci <- map(all_loci, make_familias_locus, freqs = freqs)
 
-trios <- read_tsv("../../input_data/integrated_data.tsv")
+str_colnames <- paste(rep(all_loci, each = 2), 1:2, sep = ".")
+
+trios <- 
+    read_tsv("./trios_familias_format.tsv", 
+	     col_types = cols(case_no = "i", trio = "c", "person" = "c", .default = "d")) %>%
+    filter(batch == i_batch) %>%
+    select(case_no, trio, person, str_colnames)
 
 trios_pi <- trios %>%
-    format_data() %>%
     group_by(case_no, trio) %>%
-    do(calc_cpi(., loci = familias_all_loci, pedigrees = mypedigrees)) %>%
+    do(calc_pi(., loci = familias_all_loci, pedigrees = mypedigrees)) %>%
     ungroup()
 
-trios_df <- left_join(trios, trios_pi, by = c("case_no", "trio", "marker")) %>%
-    mutate(pi_adj = ifelse(pi == 0, 0.001, pi),
-           exclusion = as.integer(pi == 0))
-
-trios_cpi <- trios_df %>%
+trios_res <- trios_pi %>%
     group_by(case_no, trio) %>%
     summarise(n_loci = n(), 
-              n_exclusions = sum(exclusion),
-              cpi = prod(pi_adj)) %>%
+              n_exclusions = sum(pi == 0)) %>%
     ungroup() 
 
-write_tsv(trios_cpi, "./trios_cpi.tsv")
+write_tsv(trios_res, sprintf("./trios_results_batch%d.tsv", i_batch))
