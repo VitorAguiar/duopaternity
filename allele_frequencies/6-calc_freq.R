@@ -1,29 +1,20 @@
 library(tidyverse)
 
-microvars <- read_tsv("../input_data/str_info.tsv") %>%
-    mutate(mv = map(repeats, ~0:(.x-1))) %>%
-    unnest(mv) %>%
-    select(-repeats)
-
 all_profiles <- read_tsv("../input_data/integrated_data.tsv")   
-
-possible_alleles <- all_profiles %>%
+    
+obs_alleles <- all_profiles %>%
     pivot_longer(m_1:af_2, names_to = "id", values_to = "allele") %>%
-    distinct(marker, allele) %>%
+    distinct(marker, allele)
+
+obs_alleles_integers <- filter(obs_alleles, near(allele %% 1, 0))
+obs_alleles_microvars <- filter(obs_alleles, !near(allele %% 1, 0))
+
+possible_alleles <- obs_alleles_integers %>%
     group_by(marker) %>%
-    summarise(minallele = min(allele) - 1,
-	      maxallele = max(allele) + 1) %>%
+    complete(allele = full_seq(allele, 1)) %>%
     ungroup() %>%
-    mutate(minallele = ifelse(minallele <= 1, 1, minallele),
-	   minallele = floor(minallele),
-	   maxallele = floor(maxallele)) %>%
-    mutate(allelerange = map2(minallele, maxallele, ~.x:.y)) %>%
-    select(marker, allelerange) %>%
-    unnest(allelerange) %>%
-    left_join(microvars, by = c("marker" = "locus")) %>%
-    mutate(allele = ifelse(mv == 0, allelerange, paste(allelerange, mv, sep = ".")),
-	   allele = as.numeric(allele)) %>%
-    select(marker, allele)
+    bind_rows(obs_alleles_microvars) %>%
+    arrange(marker, allele)
 
 profilesdf <- all_profiles %>%
     filter(trio == "M1_F1_SP1") %>%
@@ -79,7 +70,7 @@ freq_df <- bind_rows(non_dups_to_calc, dups_to_calc) %>%
 freq_alleles <- select(freq_df, marker, allele)
 
 all_alleles_freq <- left_join(possible_alleles, freq_df, by = c("marker", "allele")) %>%
-    mutate(n = replace_na(n, 2)) %>%
+    mutate(n = replace_na(n, 1)) %>%
     group_by(marker) %>%
     mutate(f = n/sum(n)) %>%
     ungroup()
