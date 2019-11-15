@@ -7,12 +7,12 @@ make_familias_locus <- function(locus, freqs, mutation) {
                   allelenames = freqs$allele[freqs$marker == locus], 
                   name = locus,
                   maleMutationModel = "Stepwise",
-		  femaleMutationModel = "Equal",
+                  femaleMutationModel = "Equal",
                   maleMutationRate = mutation$r[mutation$marker == locus],
-		  femaleMutationRate = 0,
+                  femaleMutationRate = 0,
                   maleMutationRate2 = 0.001,
-		  femaleMutationRate2 = 0,
-                  MutationRange = 0.5)
+                  femaleMutationRate2 = 0,
+                  MutationRange = 0.1)
 }
 
 calc_pi <- function(df_profiles, loci, pedigrees) {
