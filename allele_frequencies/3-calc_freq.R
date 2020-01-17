@@ -1,3 +1,4 @@
+library(igraph)
 library(tidyverse)
 
 all_profiles <- read_tsv("../input_data/integrated_data.tsv")   
@@ -19,34 +20,23 @@ possible_alleles <- obs_alleles_integers %>%
 profilesdf <- all_profiles %>%
     filter(trio == "M1_F1_SP1") %>%
     select(case_no, marker, m_1, m_2, af_1, af_2) %>%
-    gather(id, allele, 3:6) %>%
-    separate(id, c("ind", "h"), sep = "_") %>%
-    unite(id, c("case_no", "ind"), sep = "_") %>%
+    pivot_longer(m_1:af_2, 
+                 names_pattern = "(.+)_(1|2)",
+                 names_to = c("person", "h")) %>%
     mutate(h = paste0("h", h)) %>%
-    spread(h, allele)
+    pivot_wider(names_from = h, values_from = value) %>%
+    unite(id, c("case_no", "person"), sep = "_")
 
-dups <- read_tsv("./matchtbl_all.tsv") %>%
-    mutate(id01 = pmin(id1, id2),
-	   id02 = pmax(id1, id2)) %>%
-    distinct(id01, id02) %>%
-    rename(id1 = id01, id2 = id02)
+dups <- sprintf("/scratch/vitor/str/duplicates_%s.tsv", 1:100) %>%
+    map_df(read_tsv) %>%
+    mutate(id1 = pmin(ind1, id),
+           id2 = pmax(ind1, id)) %>%
+    distinct(id1, id2)
 
-dup_groups <- vector("list", nrow(dups))
+g <- graph_from_edgelist(as.matrix(dups), directed = FALSE)
 
-for (i in 1:nrow(dups)) {
-    
-    ids <- slice(dups, i) %>% unlist()
-
-    dup_groups[[i]] <- dups %>% 
-	filter(id1 %in% ids | id2 %in% ids) %>%
-	unlist() %>%
-	sort() %>%
-	unique()
-}
-
-dup_groups_df <- unique(dup_groups) %>%
-    map(~tibble(id = .)) %>%
-    bind_rows(.id = "grp")
+dup_groups_df <- tibble(id = names(components(g)$membership), 
+                        grp = components(g)$membership)
 
 # calculate allele frequencies
 dups_to_calc <- dup_groups_df %>%
@@ -61,7 +51,7 @@ non_dups_to_calc <- profilesdf %>%
     select(-id)
 
 freq_df <- bind_rows(non_dups_to_calc, dups_to_calc) %>%
-    gather(h, allele, h1:h2) %>%
+    pivot_longer(-marker, names_to = c("h"), values_to = "allele") %>%
     count(marker, allele) %>%
     group_by(marker) %>%
     mutate(f = n/sum(n)) %>%
