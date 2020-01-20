@@ -1,18 +1,27 @@
 library(Familias)
 library(tidyverse)
 
+# make_familias_locus <- function(locus, freqs, mutation) {
+#     
+#     FamiliasLocus(frequencies = freqs$f[freqs$marker == locus],
+#                   allelenames = freqs$allele[freqs$marker == locus], 
+#                   name = locus,
+#                   maleMutationModel = "Stepwise",
+#                   femaleMutationModel = "Equal",
+#                   maleMutationRate = mutation$r[mutation$marker == locus],
+#                   femaleMutationRate = 0,
+#                   maleMutationRate2 = 0.001,
+#                   femaleMutationRate2 = 0,
+#                   MutationRange = 0.1)
+# }
+
 make_familias_locus <- function(locus, freqs, mutation) {
     
     FamiliasLocus(frequencies = freqs$f[freqs$marker == locus],
                   allelenames = freqs$allele[freqs$marker == locus], 
                   name = locus,
-                  maleMutationModel = "Stepwise",
-                  femaleMutationModel = "Equal",
-                  maleMutationRate = mutation$r[mutation$marker == locus],
-                  femaleMutationRate = 0,
-                  maleMutationRate2 = 0.001,
-                  femaleMutationRate2 = 0,
-                  MutationRange = 0.1)
+                  MutationModel = "Equal",
+                  MutationRate = 0)
 }
 
 calc_pi <- function(df_profiles, loci, pedigrees) {
@@ -46,13 +55,14 @@ mypedigrees <- list(isFather = ped1, unrelated = ped2)
 
 freqs <- read_tsv("../../allele_frequencies/allele_frequencies.tsv")
 
-mutation_rates <- "../../input_data/aabb_male_mutationrates.tsv" %>%
-    read_tsv() %>%
-    filter(marker %in% freqs$marker) %>%
-    mutate(r = ifelse(is.na(r), max(r, na.rm = TRUE), r))
+# mutation_rates <- "../../input_data/aabb_male_mutationrates.tsv" %>%
+#     read_tsv() %>%
+#     filter(marker %in% freqs$marker) %>%
+#     mutate(r = ifelse(is.na(r), max(r, na.rm = TRUE), r))
 
 all_loci <- sort(unique(freqs$marker))
-familias_all_loci <- map(all_loci, make_familias_locus, freqs = freqs, mutation = mutation_rates)
+#familias_all_loci <- map(all_loci, make_familias_locus, freqs = freqs, mutation = mutation_rates)
+familias_all_loci <- map(all_loci, make_familias_locus, freqs = freqs)
 
 str_colnames <- paste(rep(all_loci, each = 2), 1:2, sep = ".")
 
@@ -63,7 +73,10 @@ trios <- read_tsv("../../input_data/integrated_data.tsv") %>%
     ungroup()
 
 trios_familias_format <- trios %>%
-    pivot_longer(m_1:af_2, names_to = c("person", "h"), names_pattern = "(.+)_(.)", values_to = "allele") %>%
+    pivot_longer(m_1:af_2, 
+                 names_to = c("person", "h"), 
+                 names_pattern = "(.+)_(.)", 
+                 values_to = "allele") %>%
     mutate(person = recode(person, "m" = "mother", "ch" = "child", "af" = "AF")) %>%
     unite("m", c("marker", "h"), sep = ".") %>%
     pivot_wider(names_from = m, values_from = allele) %>%
@@ -74,12 +87,14 @@ trios_pi <- trios_familias_format %>%
     do(calc_pi(., loci = familias_all_loci, pedigrees = mypedigrees)) %>%
     ungroup()
 
+#this number of loci is being computed incorrectly
+#need to remove markers were alleles are NA
 trios_res <- trios_pi %>%
     group_by(case_no, trio) %>%
     summarise(n_loci = n(),
-	      cpi = prod(pi),
+              cpi = prod(pi),
               n_exclusions = sum(pi == 0)) %>%
     ungroup() 
 
-write_tsv(trios_res, "./trios_results.tsv")
-
+write_tsv(trios_pi, "./trios_pi_eq.tsv")
+write_tsv(trios_res, "./trios_cpi_eq.tsv")

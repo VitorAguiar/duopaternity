@@ -2,16 +2,13 @@ library(Familias)
 library(tidyverse)
 
 make_familias_locus <- function(locus, freqs, mutation) {
-
+    
     FamiliasLocus(frequencies = freqs$f[freqs$marker == locus],
                   allelenames = freqs$allele[freqs$marker == locus], 
                   name = locus,
-                  maleMutationModel = "Stepwise",
-                  femaleMutationModel = "Equal",
-                  maleMutationRate = mutation$r[mutation$marker == locus],
-                  femaleMutationRate = 0,
-                  maleMutationRate2 = 0.001,
-                  femaleMutationRate2 = 0,
+                  MutationModel = "Stepwise",
+                  MutationRate = mutation$r[mutation$marker == locus],
+                  MutationRate2 = 0.001,
                   MutationRange = 0.1)
 }
 
@@ -46,10 +43,10 @@ mypedigrees <- list(isFather = ped1, unrelated = ped2)
 
 freqs <- read_tsv("../../allele_frequencies/allele_frequencies.tsv")
 
-mutation_rates <- "../../input_data/aabb_male_mutationrates.tsv" %>%
+mutation_rates <- "../../input_data/aabb2008_paternal_mutationrates.tsv" %>%
     read_tsv() %>%
     filter(marker %in% freqs$marker) %>%
-    mutate(r = ifelse(is.na(r), max(r, na.rm = TRUE), r))
+    mutate(r = ifelse(is.na(r), min(r, na.rm = TRUE), r))
 
 all_loci <- sort(unique(freqs$marker))
 familias_loci <- map(all_loci, make_familias_locus, freqs = freqs, mutation = mutation_rates)
@@ -58,7 +55,7 @@ str_colnames <- paste(rep(all_loci, each = 2), 1:2, sep = ".")
 
 simul_duos <- 
     read_tsv("./duos_familias_format.tsv", 
-	     col_types = cols(case_no = "i", trio = "c", person = "c", .default = "d")) %>%
+             col_types = cols(case_no = "i", trio = "c", person = "c", .default = "d")) %>%
     select(1:3, str_colnames)
 
 simul_duos_long <- simul_duos %>%
@@ -68,8 +65,6 @@ simul_duos_long <- simul_duos %>%
     pivot_wider(names_from = tocol, values_from = allele) %>%
     rename(ch_1 = child_1, ch_2 = child_2, af_1 = AF_1, af_2 = AF_2) %>%
     mutate(exclusion = as.integer(ch_1 != af_1 & ch_1 != af_2 & ch_2 != af_1 & ch_2 != af_2)) 
-
-#parallelize as in trios analysis
 
 duos_pi <- simul_duos %>%
     group_by(case_no, trio) %>%
@@ -86,6 +81,6 @@ duos_cpi <- duos_pi %>%
 duos_inclusion <- duos_cpi %>% 
     filter(n_exclusions < 4, cpi >= 10000) 
 
-write_tsv(duos, "duos_stewise_pi.tsv")
-write_tsv(duos_cpi, "duos_stepwise_cpi.tsv")
-write_tsv(duos_inclusion, "duos_stepwise_falseinclusions.tsv")
+write_tsv(duos_pi, "duos_pi.tsv")
+write_tsv(duos_cpi, "duos_cpi.tsv")
+write_tsv(duos_inclusion, "duos_falseinclusions.tsv")
