@@ -87,9 +87,13 @@ trios_pi <- trios_familias_format %>%
     do(calc_pi(., loci = familias_all_loci, pedigrees = mypedigrees)) %>%
     ungroup()
 
-#this number of loci is being computed incorrectly
-#need to remove markers were alleles are NA
-trios_res <- trios_pi %>%
+# remove loci not present in a given case before computing total number of loci
+# Model attributes PI=1 to these
+trios_res <- trios %>%
+    distinct(case_no, trio, marker) %>%
+    mutate(present = 1L) %>%
+    left_join(trios_pi, ., by = c("case_no", "trio", "marker")) %>%
+    filter(!is.na(present)) %>%
     group_by(case_no, trio) %>%
     summarise(n_loci = n(),
               cpi = prod(pi),

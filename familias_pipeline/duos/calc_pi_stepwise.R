@@ -8,7 +8,7 @@ make_familias_locus <- function(locus, freqs, mutation) {
                   name = locus,
                   MutationModel = "Stepwise",
                   MutationRate = mutation$r[mutation$marker == locus],
-                  MutationRate2 = 0.001,
+                  MutationRate2 = 0.000001,
                   MutationRange = 0.1)
 }
 
@@ -59,7 +59,10 @@ simul_duos <-
     select(1:3, str_colnames)
 
 simul_duos_long <- simul_duos %>%
-    pivot_longer(-(1:3), names_to = c("marker", "h"), names_pattern = "(.+)\\.(.)", values_to = "allele") %>%
+    pivot_longer(-(1:3), 
+                 names_to = c("marker", "h"), 
+                 names_pattern = "(.+)\\.(.)", 
+                 values_to = "allele") %>%
     drop_na() %>%
     unite("tocol", c("person", "h"), sep = "_") %>%
     pivot_wider(names_from = tocol, values_from = allele) %>%
