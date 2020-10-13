@@ -47,4 +47,4 @@ plot_out <- plot_grid(plot1, plot2, nrow = 1,
                       labels = c("A)", "B)"), 
                       label_size = 14, label_fontfamily = "Times", label_x = -0.025)
 
-save_plot("./plot.png", plot_out, dpi = 600, base_width = 6, base_height = 2.5)
+save_plot("./Fig1.tiff", plot_out, dpi = 600, base_width = 6, base_height = 2.5)
